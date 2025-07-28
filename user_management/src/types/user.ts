@@ -5,14 +5,14 @@ export interface User {
   username: string;
   avatar?: string;
   email: string;
-  createdAt: string;
+  created_at: string;
   platforms: Partial<Record<Platform, PlatformConfig>>;
 }
 
 export type PlatformConfig = GitLabConfig | MattermostConfig | DriveConfig;
 
 export interface GitLabConfig {
-  role: 'Developer' | 'Maintainer';
+  role: 'Developer' | 'Maintainer' | "Owner" | "Guest" | "Reporter";
   groupId: string;
   repoAccess: string[];
 }
@@ -28,3 +28,17 @@ export interface DriveConfig {
   sharedFolderId: string;
   permissionLevel: 'reader' | 'writer' | 'commenter';
 }
+
+export type UserModalProps = {
+  mode: 'create' | 'edit';
+  open: boolean;
+  setOpen: (val: boolean) => void;
+  defaultValues?: {
+    id?: string;
+    username: string;
+    email: string;
+    password?: string;
+    platforms: Record<string, any>;
+  };
+  onSuccess?: () => void;
+};

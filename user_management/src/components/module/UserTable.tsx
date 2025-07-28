@@ -1,17 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Pencil, Trash2, Plus, Users } from 'lucide-react';
-import { User } from '@/types/user';
-import { Gitlab, Folder, MessageCircle } from 'lucide-react';
+import { Pencil, Trash2, Users, Gitlab, Folder, MessageCircle } from 'lucide-react';
+import { useUserQuery } from '@/hooks/useUserQuery';
+import UserModal from './Form';
 
-interface UserTableProps {
-  users: User[];
-}
+export default function UserTable() {
+  const { data: users = [], isLoading, isError, refetch } = useUserQuery();
 
-export default function UserTable({ users }: UserTableProps) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState<any>();
+
   const iconMap: Record<string, React.ReactNode> = {
     gitlab: <Gitlab className="w-4 h-4" />,
     mattermost: <MessageCircle className="w-4 h-4" />,
@@ -24,9 +26,16 @@ export default function UserTable({ users }: UserTableProps) {
     drive: '#0F9D58',
   };
 
+  const handleEdit = (user: any) => {
+    setEditUser(user);
+    setEditOpen(true);
+  };
+
+  if (isLoading) return <div className="px-6 py-4">Loading...</div>;
+  if (isError) return <div className="px-6 py-4 text-red-500">Failed to load users.</div>;
+
   return (
     <div className="space-y-4 px-100">
-
       <Input placeholder="Search users by username or email..." className="p-5 bg-white" />
       <div className="text-sm mb-4 rounded-xl border shadow-sm bg-white py-5 text-muted-foreground flex items-center gap-2 pl-3">
         <Users className="w-4 h-4" />
@@ -35,8 +44,6 @@ export default function UserTable({ users }: UserTableProps) {
 
       <Card>
         <CardContent className="p-4">
-
-
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
@@ -51,33 +58,20 @@ export default function UserTable({ users }: UserTableProps) {
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id} className="border-b hover:bg-muted/50">
-                    {/* User */}
                     <td className="py-2">
                       <div className="flex items-center gap-2">
                         {user.avatar ? (
-                          <img
-                            src={user.avatar}
-                            alt={user.username}
-                            className="w-8 h-8 rounded-full object-cover"
-                          />
+                          <img src={user.avatar} alt={user.username} className="w-8 h-8 rounded-full object-cover" />
                         ) : (
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                            style={{
-                              background: 'linear-gradient(to bottom right, #b721ff, #21d4fd)',
-                            }}
-                          >
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                            style={{ background: 'linear-gradient(to bottom right, #b721ff, #21d4fd)' }}>
                             {user.username?.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <span>{user.username}</span>
                       </div>
                     </td>
-
-                    {/* Email */}
                     <td className="py-2">{user.email}</td>
-
-                    {/* Platforms (icons) */}
                     <td className="py-2">
                       <div className="flex gap-1 flex-wrap">
                         {Object.keys(user.platforms || {}).map((platform, idx) => (
@@ -91,17 +85,11 @@ export default function UserTable({ users }: UserTableProps) {
                         ))}
                       </div>
                     </td>
-
-                    {/* Created date */}
                     <td className="py-2">
-                      {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString('en-CA')
-                        : '-'}
+                      {user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : '-'}
                     </td>
-
-                    {/* Actions */}
-                    <td >
-                      <Button size="icon" variant="ghost">
+                    <td>
+                      <Button size="icon" variant="ghost" onClick={() => handleEdit(user)}>
                         <Pencil className="w-4 h-4 text-blue-500" />
                       </Button>
                       <Button size="icon" variant="ghost">
@@ -111,11 +99,21 @@ export default function UserTable({ users }: UserTableProps) {
                   </tr>
                 ))}
               </tbody>
-
             </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal for Editing */}
+      {editOpen && (
+        <UserModal
+          mode="edit"
+          open={editOpen}
+          setOpen={setEditOpen}
+          defaultValues={editUser}
+          onSuccess={refetch}
+        />
+      )}
     </div>
   );
 }
