@@ -1,9 +1,10 @@
 'use client';
 
-import CreateUserModal from "../Form";
-
+import { useState } from "react";
+import UserModal from "../Form";
 
 export default function Header() {
+  const [open, setOpen] = useState(false);
   return (
     <header className="flex justify-between bg-white items-center px-100 p-5 mb-10">
       <div>
@@ -12,7 +13,13 @@ export default function Header() {
           Manage users and their platform access
         </p>
       </div>
-      <CreateUserModal />
+      <UserModal
+        mode="create"
+        open={open}
+        setOpen={setOpen}
+        defaultValues={undefined}
+        onSuccess={() => setOpen(false)}
+      />
     </header>
   );
 }

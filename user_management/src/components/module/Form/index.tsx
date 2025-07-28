@@ -9,12 +9,52 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, Gitlab, Folder, MessageCircle, Database, Cloud, Slack } from 'lucide-react';
-import { useState } from 'react';
+import {
+    Plus,
+    Gitlab,
+    Folder,
+    MessageCircle,
+    Database,
+    Cloud,
+    Slack,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-export default function CreateUserModal() {
-    const [open, setOpen] = useState(false);
+type UserModalProps = {
+    mode: 'create' | 'edit';
+    open: boolean;
+    setOpen: (val: boolean) => void;
+    defaultValues?: {
+        id?: string;
+        username: string;
+        email: string;
+        password?: string;
+        platforms: Record<string, any>;
+    };
+    onSuccess?: () => void;
+};
+
+export default function UserModal({ mode, open, setOpen, defaultValues, onSuccess }: UserModalProps) {
     const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        password: '',
+    });
+    const [platformConfigs, setPlatformConfigs] = useState<Record<string, any>>({});
+
+    useEffect(() => {
+        if (defaultValues) {
+            setFormData({
+                username: defaultValues.username || '',
+                email: defaultValues.email || '',
+                password: '',
+            });
+            setSelectedPlatforms(Object.keys(defaultValues.platforms || {}));
+            setPlatformConfigs(defaultValues.platforms || {});
+        }
+    }, [defaultValues]);
 
     const iconMap: Record<string, React.ReactNode> = {
         gitlab: <Gitlab className="w-4 h-4" />,
@@ -34,7 +74,7 @@ export default function CreateUserModal() {
         database: '#8e44ad',
     };
 
-    const platforms = ['gitlab', 'mattermost', 'drive', 'slack', 'cloud', 'database'];
+    const platforms = ['gitlab', 'mattermost', 'drive'];
 
     const togglePlatform = (platform: string) => {
         setSelectedPlatforms((prev) =>
@@ -42,6 +82,31 @@ export default function CreateUserModal() {
                 ? prev.filter((p) => p !== platform)
                 : [...prev, platform]
         );
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const payload = {
+            ...formData,
+            platforms: selectedPlatforms.reduce((acc, platform) => {
+                acc[platform] = platformConfigs[platform] || {};
+                return acc;
+            }, {} as Record<string, any>),
+        };
+
+        try {
+            if (mode === 'create') {
+                await axios.post('http://localhost:8000/gitlab/users/create', payload);
+            } else if (mode === 'edit' && defaultValues?.id) {
+                await axios.put(`http://localhost:8000/gitlab/users/${defaultValues.id}`, payload);
+            }
+            onSuccess?.();
+            setOpen(false);
+        } catch (err: any) {
+            console.error('Error:', err?.response?.data || err.message);
+            alert(`Error: ${err?.response?.data?.detail || err.message}`);
+        }
     };
 
     return (
@@ -53,35 +118,26 @@ export default function CreateUserModal() {
             </DialogTrigger>
             <DialogContent className="w-full">
                 <DialogHeader>
-                    <DialogTitle>Create New User</DialogTitle>
+                    <DialogTitle>{mode === 'create' ? 'Create New User' : 'Edit User'}</DialogTitle>
                 </DialogHeader>
-                <form className="space-y-4 mt-2">
-                    <div>
-                        <label className="text-sm font-medium">Username</label>
-                        <input
-                            type="text"
-                            placeholder="Enter username"
-                            className="w-full mt-1 p-2 border rounded-md"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">Email</label>
-                        <input
-                            type="email"
-                            placeholder="Enter email"
-                            className="w-full mt-1 p-2 border rounded-md"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">Password</label>
-                        <input
-                            type="password"
-                            placeholder="Enter password"
-                            className="w-full mt-1 p-2 border rounded-md"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+                    {['username', 'email', ...(mode === 'create' ? ['password'] : [])].map((field) => (
+                        <div key={field}>
+                            <label className="text-sm font-medium capitalize">{field}</label>
+                            <input
+                                type={field === 'password' ? 'password' : 'text'}
+                                placeholder={`Enter ${field}`}
+                                className="w-full mt-1 p-2 border rounded-md"
+                                value={(formData as any)[field]}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, [field]: e.target.value })
+                                }
+                                required
+                            />
+                        </div>
+                    ))}
 
-                    {/* Platform Access */}
+                    {/* Platforms */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {platforms.map((platform) => (
                             <div key={platform} className="border px-4 py-3 rounded-md space-y-3">
@@ -109,40 +165,208 @@ export default function CreateUserModal() {
 
                                 {selectedPlatforms.includes(platform) && (
                                     <div className="grid gap-3 text-sm text-gray-800">
-                                        <div>
-                                            <label className="block font-medium mb-1">Server URL</label>
-                                            <input
-                                                type="text"
-                                                placeholder={`https://${platform}.company.com`}
-                                                className="w-full border rounded-md p-2"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block font-medium mb-1">Access Level</label>
-                                            <select className="w-full border rounded-md p-2">
-                                                <option>Viewer</option>
-                                                <option>Reporter</option>
-                                                <option>Developer</option>
-                                                <option>Maintainer</option>
-                                                <option>Owner</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block font-medium mb-1">Group ID</label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. 123"
-                                                className="w-full border rounded-md p-2"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block font-medium mb-1">Storage Limit</label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. 5GB"
-                                                className="w-full border rounded-md p-2"
-                                            />
-                                        </div>
+                                        {platform === 'gitlab' && (
+                                            <>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Role</label>
+                                                    <select
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.role || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    role: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    >
+                                                        <option>Guest</option>
+                                                        <option>Reporter</option>
+                                                        <option>Developer</option>
+                                                        <option>Maintainer</option>
+                                                        <option>Owner</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Group ID</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. 123"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.group_id || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    group_id: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Repo Access</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="repo1,repo2"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.repo_access || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    repo_access: e.target.value.split(',').map((r) => r.trim()),
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {platform === 'mattermost' && (
+                                            <>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Server Name</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. chat.company.com"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.server_name || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    server_name: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Team</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. dev-team"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.team || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    team: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Role</label>
+                                                    <select
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.role || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    role: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    >
+                                                        <option>Member</option>
+                                                        <option>Admin</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Default Channels</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. general,dev"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.default_channels || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    default_channels: e.target.value.split(',').map((c) => c.trim()),
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {platform === 'drive' && (
+                                            <>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Storage Limit (MB)</label>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="e.g. 5000"
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.storage_limit || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    storage_limit: parseInt(e.target.value),
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Shared Folder</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. 1D_c5qz8XN..."
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.shared_folder_id|| ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    shared_folder_id: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block font-medium mb-1">Permission Level</label>
+                                                    <select
+                                                        className="w-full border rounded-md p-2"
+                                                        value={platformConfigs[platform]?.permission || ''}
+                                                        onChange={(e) =>
+                                                            setPlatformConfigs((prev) => ({
+                                                                ...prev,
+                                                                [platform]: {
+                                                                    ...prev[platform],
+                                                                    permission: e.target.value.toLowerCase(),
+                                                                },
+                                                            }))
+                                                        }
+                                                    >
+                                                        <option>Viewer</option>
+                                                        <option>Commenter</option>
+                                                        <option>Writer</option>
+                                                        <option>Organizer</option>
+                                                    </select>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -150,7 +374,7 @@ export default function CreateUserModal() {
                     </div>
                     <DialogFooter className="mt-4">
                         <Button type="submit" className="bg-[#0033FF] text-white">
-                            Create User
+                            {mode === 'create' ? 'Create User' : 'Update User'}
                         </Button>
                         <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                             Cancel
@@ -159,6 +383,5 @@ export default function CreateUserModal() {
                 </form>
             </DialogContent>
         </Dialog>
-
     );
 }
