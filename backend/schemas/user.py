@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class UserCreate(BaseModel):
@@ -17,9 +17,25 @@ class UserOut(BaseModel):
     id: int
     username: str
     email: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     platforms: Optional[Dict[str, Any]]
 
     model_config = {
         "from_attributes": True
     }
+
+class GitLabUpdateRole(BaseModel):
+    group_id: Optional[int]
+    repo_access: Optional[List[int]]
+    role: str
+
+
+class GitLabRemoveAccess(BaseModel):
+    group_id: Optional[int]
+    repo_access: Optional[List[int]]
+
+
+class UpdateUserRequest(BaseModel):
+    email: Optional[str]
+    password: Optional[str]
+    platforms: Optional[dict]
