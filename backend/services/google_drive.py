@@ -2,18 +2,18 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-SERVICE_ACCOUNT_FILE = "credentials/credentials.json"
-SCOPES = ['https://www.googleapis.com/auth/drive']
-
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "service_account.json")
 credentials = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+    SERVICE_ACCOUNT_FILE,
+    scopes=["https://www.googleapis.com/auth/drive"]
 )
+
 drive_service = build('drive', 'v3', credentials=credentials)
 
 def grant_folder_access(folder_id: str, user_email: str, role: str = "writer"):
     permission = {
         'type': 'user',
-        'role': role,  # 'reader', 'writer', 'commenter', 'owner'
+        'role': role,  # 'reader', 'writer', 'commenter'
         'emailAddress': user_email,
     }
     return drive_service.permissions().create(

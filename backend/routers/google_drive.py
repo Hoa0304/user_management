@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.google_drive import grant_folder_access, revoke_folder_access, update_permission, list_permissions
 
-router = APIRouter()
+router = APIRouter(
+    tags=["Google Drive Integration"]
+)
 
 class AccessRequest(BaseModel):
     folder_id: str
@@ -13,7 +15,7 @@ class AccessRequest(BaseModel):
 def api_grant_access(
     folder_id: str,
     user_email: str,
-    role: str  # "reader", "writer", "commenter", 'owner'
+    role: str  # "reader", "writer", "commenter"
 ):
     try:
         result = grant_folder_access(folder_id, user_email, role)
