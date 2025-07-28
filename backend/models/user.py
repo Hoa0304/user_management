@@ -1,3 +1,4 @@
+from utils.security import hash_password
 from db import Base
 from sqlalchemy import Column, Integer, String, DateTime
 import json
@@ -26,3 +27,5 @@ class User(Base):
     password_hash = Column(String, default=None)
     created_at = Column(DateTime)
     platforms = Column(JSONEncodedDict)
+    def set_password(self, password: str):
+        self.password_hash = hash_password(password)
