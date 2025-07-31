@@ -39,3 +39,40 @@ class UpdateUserRequest(BaseModel):
     email: Optional[str]
     password: Optional[str]
     platforms: Optional[dict]
+
+# Schemas for Users and Groups
+class UserCreateRequest(BaseModel):
+    userid: str
+    password: str
+    email: str = ""
+    display_name: str = ""
+
+class UpdateUserRequest(BaseModel):
+    userid: str
+    key: str
+    value: str
+
+class UserDeleteRequest(BaseModel):
+    userid: str
+
+class GroupMemberRequest(BaseModel):
+    groupid: str
+    userid: str
+
+class GroupCreateRequest(BaseModel):
+    groupid: str
+
+# Schemas for Folder Sharing
+class FolderAccessRequest(BaseModel):
+    folder_path: str
+    userid: str
+    permission: int  # 1=view, 2= update, 4=create,8= delete, 15=all (view/edit/delete) 
+
+class UpdatePermissionRequest(BaseModel):
+    share_id: int
+    new_permission: int
+
+class UnshareByUserRequest(BaseModel):
+    folder_path: str
+    userid: str
+    
