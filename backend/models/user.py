@@ -26,6 +26,6 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String, default=None)
     created_at = Column(DateTime)
-    platforms = Column(JSONEncodedDict)
+    platforms = Column(JSONEncodedDict, default=dict)
     def set_password(self, password: str):
         self.password_hash = hash_password(password)

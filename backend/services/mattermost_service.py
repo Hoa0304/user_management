@@ -21,6 +21,11 @@ def get_channel_by_name(team_id, channel_name):
     return res.json() if res.status_code == 200 else None
 
 def create_mattermost_user(username, email, password, config):
+    # config expects: servername, team, role, default_channels
+    team_name = config.get("team")
+    role = config.get("role")
+    default_channels = config.get("default_channels", [])
+
     # 1. Create user
     payload = {"email": email, "username": username, "password": password}
     res = requests.post(f"{MATTERMOST_URL}/api/v4/users", headers=HEADERS, json=payload)
@@ -31,30 +36,28 @@ def create_mattermost_user(username, email, password, config):
     user_id = user["id"]
 
     # 2. Add to team
-    team_name = config.get("team_name")
     if team_name:
         team = get_team_by_name(team_name)
         if not team:
             return {"error": f"Team '{team_name}' not found"}
         team_id = team["id"]
 
+        # Add user to team
         requests.post(
             f"{MATTERMOST_URL}/api/v4/teams/{team_id}/members",
             headers=HEADERS,
             json={"team_id": team_id, "user_id": user_id}
         )
 
-        # 3. Assign role (if any)
-        role = config.get("role")  # e.g. "team_admin"
+        # 3. Assign role
         if role:
             requests.put(
                 f"{MATTERMOST_URL}/api/v4/teams/{team_id}/members/{user_id}/roles",
                 headers=HEADERS,
-                json={"roles": f"{role} team_user"}
+                json={"roles": f"{role}"}
             )
 
         # 4. Add to default channels
-        default_channels = config.get("default_channels", [])  # e.g. ["town-square", "off-topic"]
         for ch_name in default_channels:
             ch = get_channel_by_name(team_id, ch_name)
             if ch:
@@ -64,7 +67,11 @@ def create_mattermost_user(username, email, password, config):
                     json={"user_id": user_id}
                 )
 
-    return {"id": user_id, "email": email, "username": username}
+    return {
+        "id": user_id,
+        "username": username,
+        "email": email
+    }
 
 def update_mattermost_user(user_id, update_data):
     url = f"{MATTERMOST_URL}/api/v4/users/{user_id}"
@@ -96,7 +103,7 @@ def update_user_team_role(user_id: str, team_name: str, role: str):
     res = requests.put(
         f"{MATTERMOST_URL}/api/v4/teams/{team_id}/members/{user_id}/roles",
         headers=HEADERS,
-        json={"roles": f"{role} team_user"}
+        json={"roles": f"{role} Member"}
     )
     return res.json()
 
