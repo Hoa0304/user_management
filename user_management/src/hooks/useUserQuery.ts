@@ -66,7 +66,7 @@ export const useUserQuery = () => {
     queryKey: ['users'],
     queryFn: async () => {
       try {
-        const res = await axios.get<User[]>('http://localhost:8000/gitlab/users');
+        const res = await axios.get<User[]>('http://localhost:8000/api/all_users');
         return [...res.data, ...mockUsers];
       } catch (err) {
         console.warn('API failed, showing only mock data');

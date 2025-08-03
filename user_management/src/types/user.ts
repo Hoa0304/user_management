@@ -12,15 +12,18 @@ export interface User {
 export type PlatformConfig = GitLabConfig | MattermostConfig | DriveConfig;
 
 export interface GitLabConfig {
+  platform: "gitlab",
   role: 'Developer' | 'Maintainer' | "Owner" | "Guest" | "Reporter";
-  groupId: string;
+  group_id: string;
   repoAccess: string[];
 }
 
 export interface MattermostConfig {
-  serverUrl: string;
-  teamName: string;
-  defaultChannels: string[];
+  platform: "mattermost",
+  server_name: string;
+  team: string;
+  role: '' |'Member' | 'Admin';
+  default_channels: string[];
 }
 
 export interface DriveConfig {
