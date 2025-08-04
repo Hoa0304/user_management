@@ -13,7 +13,7 @@ export type PlatformConfig = GitLabConfig | MattermostConfig | NextCloudConfig |
 
 export interface GitLabConfig {
   role: 'Developer' | 'Maintainer' | "Owner" | "Guest" | "Reporter";
-  groupId: string;
+  group_id: string;
   repoAccess: string[];
 }
 

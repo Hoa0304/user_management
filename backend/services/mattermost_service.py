@@ -86,7 +86,6 @@ def delete_mattermost_user(user_id, permanent=False):
     res = requests.delete(url, headers=HEADERS)
     return {"status": res.status_code, "detail": res.text}
 
-
 def add_user_to_team(user_id: str, team_name: str):
     team = get_team_by_name(team_name)
     if not team:
@@ -119,8 +118,6 @@ def update_user_team_role(user_id: str, team_name: str, role: str):
         json={"roles": mattermost_roles}
     )
     return res.json()
-
-
 
 def remove_user_from_team(user_id: str, team_name: str):
     team = get_team_by_name(team_name)

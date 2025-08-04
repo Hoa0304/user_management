@@ -47,15 +47,52 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
         );
     };
 
+    const normalizeConfigs = (configs: Record<string, any>) => {
+        const normalized: Record<string, any> = {};
+        for (const platform in configs) {
+            const config = configs[platform];
+            switch (platform) {
+                case 'gitlab':
+                    normalized[platform] = {
+                        platform,
+                        role: config.role,
+                        group_id: config.group_id,
+                        repo_access: config.repo_access,
+                    };
+                    break;
+                case 'mattermost':
+                    normalized[platform] = {
+                        platform,
+                        server_name: config.server_name,
+                        team: config.team,
+                        default_channels: config.default_channels,
+                        role: config.role,
+                    };
+                    break;
+                case 'drive':
+                    normalized[platform] = {
+                        platform,
+                        storage_limit: config.storage_limit,
+                        shared_folder_id: config.shared_folder_id,
+                        permission: config.permission,
+                    };
+                    break;
+                default:
+                    normalized[platform] = {
+                        ...config,
+                        platform,
+                    };
+            }
+        }
+        return normalized;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const payload = {
             ...formData,
-            platforms: selectedPlatforms.reduce((acc, platform) => {
-                acc[platform] = platformConfigs[platform] || {};
-                return acc;
-            }, {} as Record<string, any>),
+            platforms: normalizeConfigs(platformConfigs),
         };
 
         try {
@@ -66,10 +103,12 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             }
             onSuccess?.();
             setOpen(false);
-        } catch (err: any) {
-            console.error('Error:', err?.response?.data || err.message);
-            alert(`Error: ${err?.response?.data?.detail || err.message}`);
+        } catch (err) {
+            const error = err as AxiosError<{ detail?: string }>;
+            console.error('Error:', error.response?.data || error.message);
+            alert(`Error: ${error.response?.data?.detail || error.message}`);
         }
+
     };
 
     return (

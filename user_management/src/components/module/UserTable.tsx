@@ -8,6 +8,7 @@ import { Pencil, Trash2, Users } from 'lucide-react';
 import { useUserQuery } from '@/hooks/useUserQuery';
 import UserModal from './Form';
 import { User } from '@/types/user';
+
 import { colorMap, iconMap } from '@/lib/constants';
 import {
   AlertDialog,
@@ -22,15 +23,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import axios from 'axios';
 
-
 export default function UserTable() {
   const { data: users = [], isLoading, isError, refetch } = useUserQuery();
 
   const [editOpen, setEditOpen] = useState(false);
+
   const [editUser, setEditUser] = useState<User | undefined>();
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: User) => {
     setEditUser(user);
     setEditOpen(true);
   };

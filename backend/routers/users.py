@@ -105,7 +105,6 @@ def create_user(user_data: UserCreate):
                 )
 
             user.platforms["nextcloud"] = nc_config.model_dump()
-
         db.add(user)
         db.commit()
         db.refresh(user)
