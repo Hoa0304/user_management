@@ -11,16 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import {
     Plus,
-    Gitlab,
-    Folder,
-    MessageCircle,
-    Database,
-    Cloud,
-    Slack,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import axios, { AxiosError } from 'axios';
 import { UserModalProps } from '@/types/user';
+import { normalizeConfigs } from '@/lib/normalizeConfigs';
+import { colorMap, iconMap, platforms } from '@/lib/constants';
 
 export default function UserModal({ mode, open, setOpen, defaultValues, onSuccess }: UserModalProps) {
     const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -42,26 +38,6 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             setPlatformConfigs(defaultValues.platforms || {});
         }
     }, [defaultValues]);
-
-    const iconMap: Record<string, React.ReactNode> = {
-        gitlab: <Gitlab className="w-4 h-4" />,
-        mattermost: <MessageCircle className="w-4 h-4" />,
-        drive: <Folder className="w-4 h-4" />,
-        slack: <Slack className="w-4 h-4" />,
-        cloud: <Cloud className="w-4 h-4" />,
-        database: <Database className="w-4 h-4" />,
-    };
-
-    const colorMap: Record<string, string> = {
-        gitlab: '#FF6347',
-        mattermost: '#0058cc',
-        drive: '#0F9D58',
-        slack: '#611f69',
-        cloud: '#00c6ff',
-        database: '#8e44ad',
-    };
-
-    const platforms = ['gitlab', 'mattermost', 'drive'];
 
     const togglePlatform = (platform: string) => {
         setSelectedPlatforms((prev) =>
@@ -122,8 +98,8 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
         try {
             if (mode === 'create') {
                 await axios.post('http://localhost:8000/api/users', payload);
-            } else if (mode === 'edit' && defaultValues?.id) {
-                await axios.put(`http://localhost:8000/gitlab/users/${defaultValues.id}`, payload);
+            } else if (mode === 'edit' && defaultValues?.username) {
+                await axios.patch(`http://localhost:8000/api/users/${defaultValues.username}`, payload);
             }
             onSuccess?.();
             setOpen(false);
@@ -146,7 +122,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                 <DialogHeader>
                     <DialogTitle>{mode === 'create' ? 'Create New User' : 'Edit User'}</DialogTitle>
                 </DialogHeader>
-                <div className="overflow-y-auto max-h-[75vh] mt-2">
+                <div className="overflow-y-auto max-h-[75vh] mt-2 scroll-hidden">
                     <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                         {['username', 'email', ...(mode === 'create' ? ['password'] : [])].map((field) => (
                             <div key={field}>
@@ -392,6 +368,83 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                             <option>Commenter</option>
                                                             <option>Writer</option>
                                                             <option>Organizer</option>
+                                                        </select>
+                                                    </div>
+                                                </>
+                                            )}
+                                            {platform === 'nextcloud' && (
+                                                <>
+                                                    <div>
+                                                        <label className="block font-medium mb-1">Group ID</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. 123"
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.group_id || ''}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        group_id: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block font-medium mb-1">Storage Limit (MB)</label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="e.g. 5000"
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.storage_limit || ''}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        storage_limit: parseFloat(e.target.value),
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block font-medium mb-1">Shared Folder</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. 1D_c5qz8XN..."
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.shared_folder_id || ''}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        shared_folder_id: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block font-medium mb-1">Permission Level</label>
+                                                        <select
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.permission}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        permission: e.target.value.toLowerCase(),
+                                                                    },
+                                                                }))
+                                                            }
+                                                        >
+                                                            <option value="Viewer">Viewer</option>
+                                                            <option value="Editor">Editor</option>
                                                         </select>
                                                     </div>
                                                 </>

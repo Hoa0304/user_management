@@ -18,7 +18,7 @@ router = APIRouter(tags=["NextCloud"])
 @router.post("/users/create")
 def create_user(data: UserCreateRequest):
     try:
-        return nextcloud_service.create_user(data.userid, data.password, data.email, data.display_name)
+        return nextcloud_service.create_user(data.userid, data.password, data.email)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

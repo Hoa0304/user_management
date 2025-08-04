@@ -16,8 +16,15 @@ class MattermostConfig(BaseModel):
     role: str
     default_channels: List[str]
 
+class NextCloudConfig(BaseModel):
+    platform: Literal["nextcloud"]
+    group_id: str
+    storage_limit: Optional[float] = None
+    shared_folder_id: str
+    permission: str
+
 PlatformConfig = Annotated[
-    Union[GitLabConfig, MattermostConfig],
+    Union[GitLabConfig, MattermostConfig, NextCloudConfig],
     Field(discriminator="platform")
 ]
 
@@ -67,8 +74,7 @@ class UpdateUserRequest(BaseModel):
 class UserCreateRequest(BaseModel):
     userid: str
     password: str
-    email: str = ""
-    display_name: str = ""
+    email: str
 
 class UpdateUserRequest(BaseModel):
     userid: str
@@ -98,3 +104,18 @@ class UpdatePermissionRequest(BaseModel):
 class UnshareByUserRequest(BaseModel):
     folder_path: str
     userid: str
+
+class MattermostUpdateConfig(BaseModel):
+    role: Optional[str]
+
+class NextCloudUpdateConfig(BaseModel):
+    group_id: Optional[str]
+    shared_folder_id: Optional[str]
+    storage_limit: Optional[int]
+    permission: Optional[str]
+
+class UserUpdate(BaseModel):
+    email: Optional[str]
+    password: Optional[str]
+    username: Optional[str]
+    platforms: Optional[Dict[str, Union[dict, MattermostUpdateConfig, NextCloudUpdateConfig]]]

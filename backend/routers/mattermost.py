@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from fastapi import Query
 from typing import Optional, List
 from services.mattermost_service import *
 
@@ -40,9 +41,10 @@ def update_user(user_id: str, payload: UserUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/users/{user_id}")
-def delete_user(user_id: str):
+
+def delete_user(user_id: str, permanent: bool = Query(False)):
     try:
-        return delete_mattermost_user(user_id)
+        return delete_mattermost_user(user_id, permanent)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

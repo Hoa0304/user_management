@@ -78,10 +78,13 @@ def update_mattermost_user(user_id, update_data):
     res = requests.put(url, headers=HEADERS, json=update_data)
     return res.json()
 
-def delete_mattermost_user(user_id):
+def delete_mattermost_user(user_id, permanent=False):
     url = f"{MATTERMOST_URL}/api/v4/users/{user_id}"
+    if permanent:
+        url += "?permanent=true"
+
     res = requests.delete(url, headers=HEADERS)
-    return {"status": res.status_code}
+    return {"status": res.status_code, "detail": res.text}
 
 def add_user_to_team(user_id: str, team_name: str):
     team = get_team_by_name(team_name)
@@ -96,14 +99,23 @@ def add_user_to_team(user_id: str, team_name: str):
     return res.json()
 
 def update_user_team_role(user_id: str, team_name: str, role: str):
+    role_mapping = {
+        "Admin": "team_user team_admin",
+        "Member": "team_user"
+    }
+    mattermost_roles = role_mapping.get(role)
+    if not mattermost_roles:
+        return {"error": f"Invalid role: {role}"}
+
     team = get_team_by_name(team_name)
     if not team:
         return {"error": f"Team '{team_name}' not found"}
+    
     team_id = team["id"]
     res = requests.put(
         f"{MATTERMOST_URL}/api/v4/teams/{team_id}/members/{user_id}/roles",
         headers=HEADERS,
-        json={"roles": f"{role} Member"}
+        json={"roles": mattermost_roles}
     )
     return res.json()
 
