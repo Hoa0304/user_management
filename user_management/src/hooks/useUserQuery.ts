@@ -7,13 +7,8 @@ export const useUserQuery = () => {
     queryKey: ['users'],
     queryFn: async () => {
       try {
-<<<<<<< Updated upstream
-        const res = await axios.get<User[]>('http://localhost:8000/gitlab/users');
-        return [...res.data, ...mockUsers];
-=======
         const res = await axios.get<User[]>('http://localhost:8000/api/all_users');
         return [...res.data];
->>>>>>> Stashed changes
       } catch (err) {
         console.warn('API failed, showing only mock data');
         return [];

@@ -18,16 +18,10 @@ export interface GitLabConfig {
 }
 
 export interface MattermostConfig {
-<<<<<<< Updated upstream
-  serverUrl: string;
-  teamName: string;
-  defaultChannels: string[];
-=======
   server_name: string;
   team: string;
   role: '' |'Member' | 'Admin';
   default_channels: string[];
->>>>>>> Stashed changes
 }
 
 export interface DriveConfig {

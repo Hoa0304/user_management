@@ -1,9 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-<<<<<<< Updated upstream
-=======
 from pydantic import BaseModel, EmailStr, Field
 from typing import Literal, Union, Optional, Dict, List, Annotated
 
@@ -32,7 +28,6 @@ PlatformConfig = Annotated[
     Field(discriminator="platform")
 ]
 
->>>>>>> Stashed changes
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -105,9 +100,6 @@ class UpdatePermissionRequest(BaseModel):
 class UnshareByUserRequest(BaseModel):
     folder_path: str
     userid: str
-<<<<<<< Updated upstream
-    
-=======
 
 class MattermostUpdateConfig(BaseModel):
     role: Optional[str]
@@ -123,4 +115,3 @@ class UserUpdate(BaseModel):
     password: Optional[str]
     username: Optional[str]
     platforms: Optional[Dict[str, Union[dict, MattermostUpdateConfig, NextCloudUpdateConfig]]]
->>>>>>> Stashed changes

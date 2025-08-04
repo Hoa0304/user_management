@@ -7,8 +7,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Pencil, Trash2, Users } from 'lucide-react';
 import { useUserQuery } from '@/hooks/useUserQuery';
 import UserModal from './Form';
-<<<<<<< Updated upstream
-=======
 import { User } from '@/types/user';
 import { colorMap, iconMap } from '@/lib/constants';
 import {
@@ -24,30 +22,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import axios from 'axios';
 
->>>>>>> Stashed changes
 
 export default function UserTable() {
   const { data: users = [], isLoading, isError, refetch } = useUserQuery();
 
   const [editOpen, setEditOpen] = useState(false);
-<<<<<<< Updated upstream
-  const [editUser, setEditUser] = useState<any>();
-
-  const iconMap: Record<string, React.ReactNode> = {
-    gitlab: <Gitlab className="w-4 h-4" />,
-    mattermost: <MessageCircle className="w-4 h-4" />,
-    drive: <Folder className="w-4 h-4" />,
-  };
-
-  const colorMap: Record<string, string> = {
-    gitlab: '#FF6347',
-    mattermost: '#0058cc',
-    drive: '#0F9D58',
-  };
-=======
   const [editUser, setEditUser] = useState<User | undefined>();
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
->>>>>>> Stashed changes
 
   const handleEdit = (user: any) => {
     setEditUser(user);
