@@ -7,12 +7,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Pencil, Trash2, Users, Gitlab, Folder, MessageCircle } from 'lucide-react';
 import { useUserQuery } from '@/hooks/useUserQuery';
 import UserModal from './Form';
+import { User } from '@/types/user';
 
 export default function UserTable() {
   const { data: users = [], isLoading, isError, refetch } = useUserQuery();
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editUser, setEditUser] = useState<any>();
+const [editUser, setEditUser] = useState<User | undefined>();
 
   const iconMap: Record<string, React.ReactNode> = {
     gitlab: <Gitlab className="w-4 h-4" />,
@@ -26,7 +27,7 @@ export default function UserTable() {
     drive: '#0F9D58',
   };
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: User) => {
     setEditUser(user);
     setEditOpen(true);
   };

@@ -1,7 +1,6 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import google_drive, gitlab, nextcloud
+from routers import google_drive, gitlab, nextcloud, mattermost, users
 from db import Base, engine
 from dotenv import load_dotenv
 
@@ -22,5 +21,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(gitlab.router, prefix="/gitlab")
 app.include_router(google_drive.router, prefix="/google-drive") 
 app.include_router(nextcloud.router, prefix="/nextcloud")
+app.include_router(mattermost.router, prefix="/mattermost") 
+app.include_router(users.router, prefix="/api")
 
 # run: uvicorn main:app --reload

@@ -1,6 +1,7 @@
-version: '3'
+version: "2.1"
 
 services:
+  # Nextcloud
   nextcloud:
     image: nextcloud
     ports:
@@ -8,8 +9,10 @@ services:
     volumes:
       - nextcloud_data:/var/www/html
     restart: unless-stopped
+    depends_on:
+      - nextcloud_db
 
-  db:
+  nextcloud_db:
     image: mariadb
     restart: unless-stopped
     environment:
@@ -17,6 +20,38 @@ services:
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
       MYSQL_PASSWORD: nextcloud
+    volumes:
+      - nextcloud_db_data:/var/lib/mysql
+
+  # Mattermost
+  mattermost_db:
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mmuser
+      POSTGRES_PASSWORD: mmuser_password
+      POSTGRES_DB: mattermost
+    volumes:
+      - mattermost_db_data:/var/lib/postgresql/data
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+    restart: unless-stopped
+    ports:
+      - "8065:8065"
+    environment:
+      MM_CONFIG: "/mattermost/config/config.json"
+      DB_HOST: mattermost_db
+      DB_PORT: 5432
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:mmuser_password@mattermost_db:5432/mattermost?sslmode=disable&connect_timeout=10"
+    depends_on:
+      - mattermost_db
+    volumes:
+      - mattermost_data:/mattermost/data
 
 volumes:
   nextcloud_data:
+  nextcloud_db_data:
+  mattermost_db_data:
+  mattermost_data:
