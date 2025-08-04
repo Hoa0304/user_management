@@ -1,10 +1,11 @@
-from utils.security import hash_password
-from db import Base
 from sqlalchemy import Column, Integer, String, DateTime
-import json
 from sqlalchemy.types import TypeDecorator, TEXT
+from sqlalchemy.ext.mutable import MutableDict
+from db import Base
+from utils.security import hash_password
+import json
 
-# Custom JSON Type for SQLite
+# Custom JSON type that works with SQLite
 class JSONEncodedDict(TypeDecorator):
     impl = TEXT
 
@@ -26,6 +27,13 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String, default=None)
     created_at = Column(DateTime)
+<<<<<<< Updated upstream
     platforms = Column(JSONEncodedDict)
+=======
+
+    # Use MutableDict to track changes inside JSON
+    platforms = Column(MutableDict.as_mutable(JSONEncodedDict), default=dict)
+
+>>>>>>> Stashed changes
     def set_password(self, password: str):
         self.password_hash = hash_password(password)

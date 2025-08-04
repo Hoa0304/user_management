@@ -2,6 +2,37 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
+<<<<<<< Updated upstream
+=======
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal, Union, Optional, Dict, List, Annotated
+
+class GitLabConfig(BaseModel):
+    platform: Literal["gitlab"]
+    group_id: Optional[int]
+    repo_access: Optional[List[int]]
+    role: str
+
+class MattermostConfig(BaseModel):
+    platform: Literal["mattermost"]
+    server_name: str
+    team: str
+    role: str
+    default_channels: List[str]
+
+class NextCloudConfig(BaseModel):
+    platform: Literal["nextcloud"]
+    group_id: str
+    storage_limit: Optional[float] = None
+    shared_folder_id: str
+    permission: str
+
+PlatformConfig = Annotated[
+    Union[GitLabConfig, MattermostConfig, NextCloudConfig],
+    Field(discriminator="platform")
+]
+
+>>>>>>> Stashed changes
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -44,8 +75,7 @@ class UpdateUserRequest(BaseModel):
 class UserCreateRequest(BaseModel):
     userid: str
     password: str
-    email: str = ""
-    display_name: str = ""
+    email: str
 
 class UpdateUserRequest(BaseModel):
     userid: str
@@ -75,4 +105,22 @@ class UpdatePermissionRequest(BaseModel):
 class UnshareByUserRequest(BaseModel):
     folder_path: str
     userid: str
+<<<<<<< Updated upstream
     
+=======
+
+class MattermostUpdateConfig(BaseModel):
+    role: Optional[str]
+
+class NextCloudUpdateConfig(BaseModel):
+    group_id: Optional[str]
+    shared_folder_id: Optional[str]
+    storage_limit: Optional[int]
+    permission: Optional[str]
+
+class UserUpdate(BaseModel):
+    email: Optional[str]
+    password: Optional[str]
+    username: Optional[str]
+    platforms: Optional[Dict[str, Union[dict, MattermostUpdateConfig, NextCloudUpdateConfig]]]
+>>>>>>> Stashed changes

@@ -1,4 +1,4 @@
-export type Platform = 'gitlab' | 'mattermost' | 'drive';
+export type Platform = 'gitlab' | 'mattermost' | 'drive' |'nextcloud';
 
 export interface User {
   id: string;
@@ -9,7 +9,7 @@ export interface User {
   platforms: Partial<Record<Platform, PlatformConfig>>;
 }
 
-export type PlatformConfig = GitLabConfig | MattermostConfig | DriveConfig;
+export type PlatformConfig = GitLabConfig | MattermostConfig | NextCloudConfig |DriveConfig;
 
 export interface GitLabConfig {
   role: 'Developer' | 'Maintainer' | "Owner" | "Guest" | "Reporter";
@@ -18,15 +18,29 @@ export interface GitLabConfig {
 }
 
 export interface MattermostConfig {
+<<<<<<< Updated upstream
   serverUrl: string;
   teamName: string;
   defaultChannels: string[];
+=======
+  server_name: string;
+  team: string;
+  role: '' |'Member' | 'Admin';
+  default_channels: string[];
+>>>>>>> Stashed changes
 }
 
 export interface DriveConfig {
   storageLimitMB: number;
   sharedFolderId: string;
   permissionLevel: 'reader' | 'writer' | 'commenter';
+}
+
+export interface NextCloudConfig {
+  group_id: string;
+  storageLimitMB: number;
+  sharedFolderId: string;
+  permission: ''|'viewer' | 'editor';
 }
 
 export type UserModalProps = {
