@@ -6,35 +6,41 @@ export interface User {
   avatar?: string;
   email: string;
   created_at: string;
-  platforms: Partial<Record<Platform, PlatformConfig>>;
+  platforms: PlatformConfig[];
 }
 
 export type PlatformConfig = GitLabConfig | MattermostConfig | NextCloudConfig |DriveConfig;
 
 export interface GitLabConfig {
-  role: 'Developer' | 'Maintainer' | "Owner" | "Guest" | "Reporter";
+  platform: 'gitlab';
+  role: 'Developer' | 'Maintainer' | 'Owner' | 'Guest' | 'Reporter';
   group_id: string;
-  repoAccess: string[];
+  user_id?: number;
+  repo_access: number[];
 }
 
 export interface MattermostConfig {
+  platform: 'mattermost';
   server_name: string;
   team: string;
-  role: '' |'Member' | 'Admin';
+  user_id?: string;
+  role: 'team_member' | 'team_admin';
   default_channels: string[];
 }
 
 export interface DriveConfig {
+  platform: 'drive';
   storageLimitMB: number;
   sharedFolderId: string;
   permissionLevel: 'reader' | 'writer' | 'commenter';
 }
 
 export interface NextCloudConfig {
+  platform: 'nextcloud';
   group_id: string;
   storageLimitMB: number;
   sharedFolderId: string;
-  permission: ''|'viewer' | 'editor';
+  permission: 'viewer' | 'editor';
 }
 
 export type UserModalProps = {

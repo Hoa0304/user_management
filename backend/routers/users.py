@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -26,90 +27,101 @@ def create_user(user_data: UserCreate):
             email=user_data.email,
             password_hash=hashed_pw,
             created_at=datetime.utcnow(),
-            platforms={}
+            platforms=[]  # ✅ list, không phải dict
         )
 
-        platforms = user_data.platforms or {}
+        platforms = user_data.platforms or []
 
-        # --- Handle GitLab ---
-        if "gitlab" in platforms:
-            gitlab_config: GitLabConfig = platforms["gitlab"]
-            gitlab_config_dict = gitlab_config.dict()
+        for platform_config in platforms:
+            if platform_config.platform == "gitlab":
+                gitlab_config: GitLabConfig = platform_config
+                gitlab_config_dict = gitlab_config.model_dump()
 
-            gitlab_user_id = gitlab_service.find_gitlab_user_by_email(user_data.email)
-            if not gitlab_user_id:
-                raise HTTPException(status_code=400, detail="GitLab user not found")
+                gitlab_user_id = gitlab_service.find_gitlab_user_by_email(user_data.email)
+                if not gitlab_user_id:
+                    created = gitlab_service.create_gitlab_user(
+                        username=user_data.username,
+                        email=user_data.email,
+                        password=user_data.password
+                    )
+                    if not created or "id" not in created:
+                        raise HTTPException(status_code=500, detail="Failed to create GitLab user")
+                    gitlab_user_id = created["id"]
 
-            gitlab_config_dict["user_id"] = gitlab_user_id
-            user.platforms["gitlab"] = gitlab_service.add_account(gitlab_config_dict)
+                gitlab_config_dict["username"] = user_data.username
+                gitlab_config_dict["email"] = user_data.email
+                gitlab_config_dict["platform"] = "gitlab"
 
-        # --- Handle Mattermost ---
-        if "mattermost" in platforms:
-            mm_config: MattermostConfig = platforms["mattermost"]
-            mm_config_dict = mm_config.dict()
+                result = gitlab_service.add_account(gitlab_config_dict)
+                user.platforms.append(result)
 
-            # Load from .env
-            mm_config_dict["server_url"] = os.getenv("MATTERMOST_SERVER_URL")
-            mm_config_dict["admin_token"] = os.getenv("MATTERMOST_ADMIN_TOKEN")
+            elif platform_config.platform == "mattermost":
+                mm_config: MattermostConfig = platform_config
+                mm_config_dict = mm_config.model_dump()
 
-            # Optional override from server_name
-            if mm_config.server_name:
-                mm_config_dict["server_url"] = f"https://{mm_config.server_name}"
+                mm_config_dict["server_url"] = os.getenv("MATTERMOST_SERVER_URL")
+                mm_config_dict["admin_token"] = os.getenv("MATTERMOST_ADMIN_TOKEN")
 
-            mm_user = mattermost_service.create_mattermost_user(
-                username=user_data.username,
-                email=user_data.email,
-                password=user_data.password,
-                config=mm_config_dict
-            )
+                if mm_config.server_name:
+                    mm_config_dict["server_url"] = f"https://{mm_config.server_name}"
 
-            if not isinstance(mm_user, dict) or "id" not in mm_user:
-                raise HTTPException(status_code=500, detail=f"Invalid Mattermost response: {mm_user}")
-
-            mm_config_dict["user_id"] = mm_user["id"]
-            user.platforms["mattermost"] = mm_config_dict
-
-        # --- Handle NextCloud ---
-        if "nextcloud" in platforms:
-            nc_config: NextCloudConfig = platforms["nextcloud"]
-
-            # 1. Create the user in NextCloud
-            nextcloud_service.create_user(
-                userid=user_data.username,
-                password=user_data.password,
-                email=user_data.email,
-            )
-
-            nextcloud_service.wait_for_user_ready(user_data.username)
-
-            # 2. Add to group
-            if nc_config.group_id:
-                nextcloud_service.add_member_to_group(user_data.username, nc_config.group_id)
-
-            # 3. Set storage limit
-            if nc_config.storage_limit:
-                nextcloud_service.set_user_quota(user_data.username, f"{nc_config.storage_limit} MB")
-            
-            # 4. Share folder to user
-            if nc_config.shared_folder_id:
-                permission_map = {
-                    "viewer": 1,
-                    "editor": 15,
-                    # "uploader": 4,
-                }
-
-                nextcloud_service.share_folder(
-                    folder_path=nc_config.shared_folder_id,
-                    userid=user_data.username,
-                    permission=permission_map.get(nc_config.permission or "viewer", 1)
+                mm_user = mattermost_service.create_mattermost_user(
+                    username=user_data.username,
+                    email=user_data.email,
+                    password=user_data.password,
+                    config=mm_config_dict
                 )
 
-            user.platforms["nextcloud"] = nc_config.model_dump()
+                if not isinstance(mm_user, dict) or "id" not in mm_user:
+                    raise HTTPException(status_code=500, detail=f"Invalid Mattermost response: {mm_user}")
+
+                mm_config_dict["user_id"] = mm_user["id"]
+                user.platforms.append(mm_config_dict)  # ✅
+
+            elif platform_config.platform == "nextcloud":
+                nc_config: NextCloudConfig = platform_config
+
+                nextcloud_service.create_user(
+                    userid=user_data.username,
+                    password=user_data.password,
+                    email=user_data.email,
+                )
+
+                nextcloud_service.wait_for_user_ready(user_data.username)
+
+                if nc_config.group_id:
+                    nextcloud_service.add_member_to_group(user_data.username, nc_config.group_id)
+
+                if nc_config.storage_limit:
+                    nextcloud_service.set_user_quota(user_data.username, f"{nc_config.storage_limit} MB")
+
+                if nc_config.shared_folder_id:
+                    permission_map = {
+                        "viewer": 1,
+                        "editor": 15,
+                    }
+
+                    nextcloud_service.share_folder(
+                        folder_path=nc_config.shared_folder_id,
+                        userid=user_data.username,
+                        permission=permission_map.get(nc_config.permission or "viewer", 1)
+                    )
+
+                user.platforms.append(nc_config.model_dump()) 
+
         db.add(user)
         db.commit()
         db.refresh(user)
-        return user
+        logging.warning("User platforms data: %s", user.platforms)
 
+        return UserOut(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            created_at=user.created_at,
+            platforms=user.platforms
+        )
+    
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -121,7 +133,16 @@ def get_all_users():
     db = SessionLocal()
     try:
         users = db.query(User).all()
-        return users
+        return [
+            UserOut(
+                id=user.id,
+                username=user.username,
+                email=user.email,
+                created_at=user.created_at,
+                platforms=user.platforms if user.platforms else []
+            )
+            for user in users
+        ]
     finally:
         db.close()
         
@@ -134,22 +155,52 @@ def update_user(username: str, user_update: UserUpdate):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Update email if provided
+        platforms = user.platforms or {}
+
+        # Update email and password
         if user_update.email:
             user.email = user_update.email
-
-        # Update password if provided
         if user_update.password:
             from utils.security import hash_password
             user.password_hash = hash_password(user_update.password)
 
-        # Update Mattermost
-        platforms = user.platforms or {}
-        if "mattermost" in platforms and user_update.platforms and "mattermost" in user_update.platforms:
+        # Convert platforms list → dict by platform name for easier lookup
+        platform_map = {p.platform: p for p in user_update.platforms or []}
+
+        ### GITLAB UPDATE ###
+        if "gitlab" in platforms and "gitlab" in platform_map:
+            gl_conf = platforms["gitlab"]
+            gl_update = platform_map["gitlab"]
+
+            gitlab_user_id = gl_conf.get("user_id")
+            if not gitlab_user_id:
+                raise HTTPException(status_code=400, detail="Missing GitLab user ID")
+
+            new_role = getattr(gl_update, "role", None)
+            new_group_id = getattr(gl_update, "group_id", None)
+
+            if new_role and new_group_id:
+                gitlab_service.update_user_role(
+                    user_id=gitlab_user_id,
+                    group_id=new_group_id,
+                    role=new_role
+                )
+
+            if "gitlab" not in user.platforms:
+                user.platforms["gitlab"] = {}
+
+            user.platforms["gitlab"].update(gl_update.dict(exclude_unset=True))
+            flag_modified(user, "platforms")
+
+
+        ### MATTTERMOST UPDATE ###
+        if "mattermost" in platforms and "mattermost" in platform_map:
             mm_conf = platforms["mattermost"]
             mm_user_id = mm_conf.get("user_id")
             if not mm_user_id:
                 raise HTTPException(status_code=400, detail="Missing Mattermost user ID")
+
+            mm_update = platform_map["mattermost"]
 
             update_fields = {}
             if user_update.email:
@@ -160,10 +211,8 @@ def update_user(username: str, user_update: UserUpdate):
             if update_fields:
                 mattermost_service.update_mattermost_user(mm_user_id, update_fields)
 
-            # Update roles if provided
-            new_role = user_update.platforms["mattermost"].get("role")
-            print(f">>> Requested new role: {new_role}")
-
+            # Role/team update
+            new_role = getattr(mm_update, "role", None)
             team_name = mm_conf.get("team")
             if new_role and team_name:
                 mattermost_service.update_user_team_role(
@@ -175,39 +224,40 @@ def update_user(username: str, user_update: UserUpdate):
             if "mattermost" not in user.platforms:
                 user.platforms["mattermost"] = {}
 
-            user.platforms["mattermost"].update(user_update.platforms["mattermost"])
+            user.platforms["mattermost"].update(mm_update.dict(exclude_unset=True))
+            flag_modified(user, "platforms")
 
-        # Update NextCloud
-        if "nextcloud" in platforms and user_update.platforms and "nextcloud" in user_update.platforms:
-            nc_update = user_update.platforms["nextcloud"]
+        ### NEXTCLOUD UPDATE ###
+        if "nextcloud" in platforms and "nextcloud" in platform_map:
             nc_conf = platforms["nextcloud"]
-            username_nc = user_update.username
+            nc_update = platform_map["nextcloud"]
+            username_nc = user.username
 
             if user_update.email:
                 nextcloud_service.update_user(username_nc, "email", user_update.email)
-
             if user_update.password:
                 nextcloud_service.update_user(username_nc, "password", user_update.password)
 
-            if "storage_limit" in nc_update and nc_update["storage_limit"]:
-                nextcloud_service.set_user_quota(username_nc, f"{nc_update['storage_limit']} MB")
+            if nc_update.storage_limit:
+                nextcloud_service.set_user_quota(username_nc, f"{nc_update.storage_limit} MB")
 
             old_group = nc_conf.get("group_id")
-            new_group = nc_update.get("group_id")
+            new_group = nc_update.group_id
             if new_group and old_group != new_group:
                 if old_group:
                     nextcloud_service.remove_member_from_group(username_nc, old_group)
                 nextcloud_service.add_member_to_group(username_nc, new_group)
 
             old_folder = nc_conf.get("shared_folder_id")
-            new_folder = nc_update.get("shared_folder_id")
-            new_permission = nc_update.get("permission", "viewer")
+            new_folder = nc_update.shared_folder_id
+            new_permission = nc_update.permission or "viewer"
 
             if old_folder and old_folder != new_folder:
                 try:
                     nextcloud_service.unshare_folder_by_user(old_folder, username_nc)
                 except:
                     pass
+
             if new_folder:
                 permission_map = {
                     "viewer": 1,
@@ -218,19 +268,16 @@ def update_user(username: str, user_update: UserUpdate):
                     userid=username_nc,
                     permission=permission_map.get(new_permission, 1)
                 )
-                
-
-            if user.platforms is None:
-                user.platforms = {}
 
             if "nextcloud" not in user.platforms:
                 user.platforms["nextcloud"] = {}
 
-            user.platforms["nextcloud"].update(nc_update)
+            user.platforms["nextcloud"].update(nc_update.dict(exclude_unset=True))
             flag_modified(user, "platforms")
 
         if user_update.platforms:
             flag_modified(user, "platforms")
+
         db.commit()
         db.refresh(user)
         return user
@@ -240,6 +287,8 @@ def update_user(username: str, user_update: UserUpdate):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
         
 @router.delete("/users/{username}", response_model=dict)
 def delete_user(username: str):

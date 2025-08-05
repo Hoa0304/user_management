@@ -94,15 +94,16 @@ export default function UserTable() {
                     <td className="py-2">{user.email}</td>
                     <td className="py-2">
                       <div className="flex gap-1 flex-wrap">
-                        {Object.keys(user.platforms || {}).map((platform, idx) => (
+                        {(user.platforms || []).map((p, idx) => (
                           <div
                             key={idx}
                             className="w-6 h-6 rounded-md flex items-center justify-center"
-                            style={{ backgroundColor: colorMap[platform] || '#666' }}
+                            style={{ backgroundColor: colorMap[p.platform] || '#666' }}
                           >
-                            <div className="text-white">{iconMap[platform] || '?'}</div>
+                            <div className="text-white">{iconMap[p.platform] || '?'}</div>
                           </div>
                         ))}
+
                       </div>
                     </td>
                     <td className="py-2">

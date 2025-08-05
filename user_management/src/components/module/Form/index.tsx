@@ -15,8 +15,8 @@ import {
 import { useState, useEffect } from 'react';
 import axios, { AxiosError } from 'axios';
 import { UserModalProps } from '@/types/user';
-import { normalizeConfigs } from '@/lib/normalizeConfigs';
 import { colorMap, iconMap, platforms } from '@/lib/constants';
+import { denormalizeConfigs, normalizeConfigs } from '@/lib/normalizeConfigs';
 
 export default function UserModal({ mode, open, setOpen, defaultValues, onSuccess }: UserModalProps) {
     const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -32,68 +32,58 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             setFormData({
                 username: defaultValues.username || '',
                 email: defaultValues.email || '',
-                password: '',
+                password: defaultValues.password || '',
             });
-            setSelectedPlatforms(Object.keys(defaultValues.platforms || {}));
-            setPlatformConfigs(defaultValues.platforms || {});
+            
+            const normalized = denormalizeConfigs(defaultValues.platforms || []);
+            setSelectedPlatforms(Object.keys(normalized));
+            setPlatformConfigs(normalized);
         }
-    }, [defaultValues]);
+    }, [defaultValues])
 
     const togglePlatform = (platform: string) => {
-        setSelectedPlatforms((prev) =>
-            prev.includes(platform)
+        setSelectedPlatforms((prev) => {
+            const isSelected = prev.includes(platform);
+            const updated = isSelected
                 ? prev.filter((p) => p !== platform)
-                : [...prev, platform]
-        );
+                : [...prev, platform];
+
+            if (!isSelected) {
+                setPlatformConfigs((prevConfigs) => ({
+                    ...prevConfigs,
+                    [platform]: {
+                        ...(platform === 'gitlab' && { role: 'Guest', group_id: '', repo_access: [] }),
+                        ...(platform === 'mattermost' && {
+                            server_name: '',
+                            team: '',
+                            default_channels: [],
+                            role: 'team_member',
+                        }),
+                        ...(platform === 'nextcloud' && {
+                            storage_limit: '',
+                            shared_folder_id: '',
+                            permission: 'viewer',
+                        }),
+                    },
+                }));
+            }
+
+            return updated;
+        });
     };
 
-    const normalizeConfigs = (configs: Record<string, any>) => {
-        const normalized: Record<string, any> = {};
-        for (const platform in configs) {
-            const config = configs[platform];
-            switch (platform) {
-                case 'gitlab':
-                    normalized[platform] = {
-                        platform,
-                        role: config.role,
-                        group_id: config.group_id,
-                        repo_access: config.repo_access,
-                    };
-                    break;
-                case 'mattermost':
-                    normalized[platform] = {
-                        platform,
-                        server_name: config.server_name,
-                        team: config.team,
-                        default_channels: config.default_channels,
-                        role: config.role,
-                    };
-                    break;
-                case 'drive':
-                    normalized[platform] = {
-                        platform,
-                        storage_limit: config.storage_limit,
-                        shared_folder_id: config.shared_folder_id,
-                        permission: config.permission,
-                    };
-                    break;
-                default:
-                    normalized[platform] = {
-                        ...config,
-                        platform,
-                    };
-            }
-        }
-        return normalized;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (formData.password === '') {
+            delete formData.password;
+        }
 
         const payload = {
             ...formData,
             platforms: normalizeConfigs(platformConfigs),
         };
+        console.log(formData)
 
         try {
             if (mode === 'create') {
@@ -123,22 +113,24 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                     <DialogTitle>{mode === 'create' ? 'Create New User' : 'Edit User'}</DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto max-h-[75vh] mt-2 scroll-hidden">
-                    <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                        {['username', 'email', ...(mode === 'create' ? ['password'] : [])].map((field) => (
-                            <div key={field}>
-                                <label className="text-sm font-medium capitalize">{field}</label>
-                                <input
-                                    type={field === 'password' ? 'password' : 'text'}
-                                    placeholder={`Enter ${field}`}
-                                    className="w-full mt-1 p-2 border rounded-md"
-                                    value={(formData as any)[field]}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, [field]: e.target.value })
-                                    }
-                                    required
-                                />
-                            </div>
-                        ))}
+                        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+                           {['username', 'email', 'password'].map((field) => (
+  <div key={field}>
+    <label className="text-sm font-medium capitalize">{field}</label>
+    <input
+      type={field === 'password' ? 'password' : 'text'}
+      placeholder={`Enter ${field}`}
+      className="w-full mt-1 p-2 border rounded-md"
+      value={(formData as any)[field]}
+      onChange={(e) =>
+        setFormData({ ...formData, [field]: e.target.value })
+      }
+      required={field !== 'password' || mode === 'create'}
+    />
+  </div>
+))}
+
+
 
                         {/* Platforms */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -216,7 +208,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                             type="text"
                                                             placeholder="repo1,repo2"
                                                             className="w-full border rounded-md p-2"
-                                                            value={platformConfigs[platform]?.repo_access || ''}
+                                                            value={platformConfigs[platform]?.repo_access}
                                                             onChange={(e) =>
                                                                 setPlatformConfigs((prev) => ({
                                                                     ...prev,
@@ -273,7 +265,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                         <label className="block font-medium mb-1">Role</label>
                                                         <select
                                                             className="w-full border rounded-md p-2"
-                                                            value={platformConfigs[platform]?.role || 'Member'}
+                                                            value={platformConfigs[platform]?.role}
                                                             onChange={(e) =>
                                                                 setPlatformConfigs((prev) => ({
                                                                     ...prev,
@@ -285,8 +277,8 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                             }
                                                             required
                                                         >
-                                                            <option value="Member">Member</option>
-                                                            <option value="Admin">Admin</option>
+                                                            <option value="team_member">Member</option>
+                                                            <option value="team_admin">Admin</option>
                                                         </select>
 
                                                     </div>
@@ -438,7 +430,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                                     ...prev,
                                                                     [platform]: {
                                                                         ...prev[platform],
-                                                                        permission: e.target.value.toLowerCase(),
+                                                                        permission: e.target.value,
                                                                     },
                                                                 }))
                                                             }
