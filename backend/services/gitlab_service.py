@@ -12,7 +12,7 @@ GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 if not GITLAB_TOKEN:
     raise Exception("Missing GITLAB_TOKEN in environment variables")
 
-GITLAB_API_BASE = "https://gitlab.ikya.dev/api/v4"
+GITLAB_API_BASE = "http://localhost:8081/api/v4"
 HEADERS = {
     "Private-Token": GITLAB_TOKEN
 }
@@ -38,6 +38,7 @@ def add_account(config):
         add_user_to_project(user_id, project_id, map_role_to_access_level(role))
 
     return {
+        "platform": "gitlab",
         "user_id": user_id,
         "group_id": group_id,
         "role": role,

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.types import TypeDecorator, TEXT
-from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.ext.mutable import MutableList
 from db import Base
 from utils.security import hash_password
 import json
@@ -28,8 +28,7 @@ class User(Base):
     password_hash = Column(String, default=None)
     created_at = Column(DateTime)
 
-    # Use MutableDict to track changes inside JSON
-    platforms = Column(MutableDict.as_mutable(JSONEncodedDict), default=dict)
+    platforms = Column(MutableList.as_mutable(JSONEncodedDict), default=list)
 
     def set_password(self, password: str):
         self.password_hash = hash_password(password)

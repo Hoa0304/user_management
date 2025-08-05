@@ -50,8 +50,25 @@ services:
     volumes:
       - mattermost_data:/mattermost/data
 
+  # GitLab
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    hostname: gitlab.local
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+      - "443:443"
+      - "2222:22"
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+
 volumes:
   nextcloud_data:
   nextcloud_db_data:
   mattermost_db_data:
   mattermost_data:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
