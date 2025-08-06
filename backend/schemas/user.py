@@ -44,6 +44,7 @@ class DriveOutConfig(BaseModel):
     shared_folder_id: str
     user_email: str
     role: str
+    permission_id: Optional[str] = None
 
 class GitLabOutConfig(BaseModel):
     platform: Literal["gitlab"] = "gitlab"
@@ -126,27 +127,46 @@ class BasePlatformUpdate(BaseModel):
     platform: str
 
 class GitLabUpdateRole(BasePlatformUpdate):
+    platform: Literal["gitlab"]
     group_id: Optional[str]
     repo_access: Optional[List[int]]
     role: str
 
 class MattermostUpdateConfig(BasePlatformUpdate):
+    platform: Literal["mattermost"]
     role: Optional[str]
     team: Optional[str]
     server_name: Optional[str]
     # default_channels: Optional[List[str]]
 
 class NextCloudUpdateConfig(BasePlatformUpdate):
+    platform: Literal["nextcloud"]
     group_id: Optional[str]
     shared_folder_id: Optional[str]
     storage_limit: Optional[int]
     permission: Optional[str]
 
-PlatformUnion = Union[GitLabUpdateRole, MattermostUpdateConfig, NextCloudUpdateConfig]
+class DriveUpdateConfig(BasePlatformUpdate):
+    platform: Literal["drive"]
+    shared_folder_id: str
+    role: Optional[str]
+    user_email: str
+
+PlatformUnion = Annotated[
+    Union[
+        GitLabUpdateRole,
+        MattermostUpdateConfig,
+        NextCloudUpdateConfig,
+        DriveUpdateConfig
+    ],
+    Field(discriminator="platform")
+]
+
 platform_model_map = {
     "gitlab": GitLabUpdateRole,
     "mattermost": MattermostUpdateConfig,
     "nextcloud": NextCloudUpdateConfig,
+    "drive": DriveUpdateConfig
 }
 
 class UserUpdate(BaseModel):

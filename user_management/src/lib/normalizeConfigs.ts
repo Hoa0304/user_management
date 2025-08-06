@@ -1,6 +1,4 @@
-import { PlatformConfig } from "@/types/user";
-
-export const normalizeConfigs = (configs: Record<string, any>) => {
+export const normalizeConfigs = (configs: Record<string, any>,userEmail?: string) => {
     const normalized: any[] = [];
 
     for (const platform in configs) {
@@ -29,7 +27,8 @@ export const normalizeConfigs = (configs: Record<string, any>) => {
                 ...base,
                 // storage_limit: config.storage_limit,
                 shared_folder_id: config.shared_folder_id,
-                permission: config.permission,
+                user_email: userEmail,
+                role: config.role,
             });
         } else if (platform === 'nextcloud') {
             normalized.push({

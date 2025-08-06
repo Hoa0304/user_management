@@ -112,7 +112,7 @@ def create_user(user_data: UserCreate):
             
             elif platform_config.platform == "drive":
                 drive_config: DriveConfig = platform_config
-                role = drive_config.role or "writer"
+                role = drive_config.role
 
                 result = google_drive.grant_folder_access(
                     shared_folder_id=drive_config.shared_folder_id,
@@ -164,7 +164,7 @@ def get_all_users():
         ]
     finally:
         db.close()
-        
+
 @router.patch("/users/{username}", response_model=UserOut)
 def update_user(username: str, user_update: UserUpdate):
     db: Session = SessionLocal()
@@ -311,6 +311,40 @@ def update_user(username: str, user_update: UserUpdate):
                 **nc_conf,
                 **nc_update.dict(exclude_unset=True)
             }
+            flag_modified(user, "platforms")
+
+        # GOOGLE DRIVE
+        if "drive" in platform_map:
+            drive_conf = platforms.get("drive", {})
+            drive_update = platform_map["drive"]
+
+            folder_id = drive_update.shared_folder_id
+            role = drive_update.role.lower()
+            user_email = drive_update.user_email or user.email  # fallback
+
+            try:
+                permission_id = google_drive.get_permission_id_by_email(folder_id, user_email)
+                if permission_id:
+                    google_drive.update_permission(folder_id, permission_id, role)
+                else:
+                    result = google_drive.grant_folder_access(
+                        shared_folder_id=folder_id,
+                        user_email=user_email,
+                        role=role
+                    )
+                    permission_id = result["permission_id"]
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Drive role error: {str(e)}")
+
+            platforms["drive"] = {
+                **drive_conf,
+                **drive_update.dict(exclude_unset=True),
+                "user_email": user_email,
+                "platform": "drive",
+                "permission_id": permission_id,
+            }
+            
             flag_modified(user, "platforms")
 
         # Convert dict back to list for DB

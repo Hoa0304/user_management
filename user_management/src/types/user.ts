@@ -33,7 +33,7 @@ export interface DriveConfig {
   platform: 'drive';
   // storageLimitMB: number;
   sharedFolderId: string;
-  permissionLevel: 'reader' | 'writer' | 'commenter';
+  role: 'reader' | 'writer' | 'commenter';
 }
 
 export interface NextCloudConfig {

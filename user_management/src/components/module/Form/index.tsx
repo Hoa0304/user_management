@@ -36,6 +36,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             });
 
             const normalized = denormalizeConfigs(defaultValues.platforms || []);
+            console.log("Normalized Platforms:", normalized);
             setSelectedPlatforms(Object.keys(normalized));
             setPlatformConfigs(normalized);
         }
@@ -66,7 +67,8 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                         }),
                         ...(platform === 'drive' && {
                             shared_folder_id: '',
-                            permission: 'viewer',
+                            role: 'viewer',
+                            user_email:  formData.email,
                         }),
                     },
                 }));
@@ -82,7 +84,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
         const payload = {
             ...formData,
             ...(formData.password !== '' && { password: formData.password }),
-            platforms: normalizeConfigs(platformConfigs),
+            platforms: normalizeConfigs(platformConfigs, formData.email),
         };
 
         try {
@@ -94,11 +96,12 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             onSuccess?.();
             setOpen(false);
         } catch (err) {
-            const error = err as AxiosError<{ detail?: string }>;
-            console.error('Error:', error.response?.data || error.message);
-            alert(`Error: ${error.response?.data?.detail || error.message}`);
+            if (axios.isAxiosError(err)) {
+                console.error("Validation error:", err.response?.data);
+            } else {
+                console.error("Unknown error", err);
+            }
         }
-
     };
 
     return (
@@ -129,8 +132,6 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                 />
                             </div>
                         ))}
-
-
 
                         {/* Platforms */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -345,21 +346,20 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                         <label className="block font-medium mb-1">Permission Level</label>
                                                         <select
                                                             className="w-full border rounded-md p-2"
-                                                            value={platformConfigs[platform]?.permission || ''}
+                                                            value={platformConfigs[platform]?.role}
                                                             onChange={(e) =>
                                                                 setPlatformConfigs((prev) => ({
                                                                     ...prev,
                                                                     [platform]: {
                                                                         ...prev[platform],
-                                                                        permission: e.target.value.toLowerCase(),
+                                                                        role: e.target.value,
                                                                     },
                                                                 }))
                                                             }
                                                         >
-                                                            <option>Viewer</option>
-                                                            <option>Commenter</option>
-                                                            <option>Writer</option>
-                                                            <option>Organizer</option>
+                                                            <option value="viewer">Viewer</option>
+                                                            <option value="commenter">Commenter</option>
+                                                            <option value="writer">Writer</option>
                                                         </select>
                                                     </div>
                                                 </>
