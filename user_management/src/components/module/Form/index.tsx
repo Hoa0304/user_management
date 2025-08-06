@@ -32,9 +32,9 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             setFormData({
                 username: defaultValues.username || '',
                 email: defaultValues.email || '',
-                password: defaultValues.password || '',
+                password: (defaultValues as any).password || '',
             });
-            
+
             const normalized = denormalizeConfigs(defaultValues.platforms || []);
             setSelectedPlatforms(Object.keys(normalized));
             setPlatformConfigs(normalized);
@@ -64,6 +64,10 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                             shared_folder_id: '',
                             permission: 'viewer',
                         }),
+                        ...(platform === 'drive' && {
+                            shared_folder_id: '',
+                            permission: 'viewer',
+                        }),
                     },
                 }));
             }
@@ -75,15 +79,11 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (formData.password === '') {
-            delete formData.password;
-        }
-
         const payload = {
             ...formData,
+            ...(formData.password !== '' && { password: formData.password }),
             platforms: normalizeConfigs(platformConfigs),
         };
-        console.log(formData)
 
         try {
             if (mode === 'create') {
@@ -113,22 +113,22 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                     <DialogTitle>{mode === 'create' ? 'Create New User' : 'Edit User'}</DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto max-h-[75vh] mt-2 scroll-hidden">
-                        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                           {['username', 'email', 'password'].map((field) => (
-  <div key={field}>
-    <label className="text-sm font-medium capitalize">{field}</label>
-    <input
-      type={field === 'password' ? 'password' : 'text'}
-      placeholder={`Enter ${field}`}
-      className="w-full mt-1 p-2 border rounded-md"
-      value={(formData as any)[field]}
-      onChange={(e) =>
-        setFormData({ ...formData, [field]: e.target.value })
-      }
-      required={field !== 'password' || mode === 'create'}
-    />
-  </div>
-))}
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+                        {['username', 'email', 'password'].map((field) => (
+                            <div key={field}>
+                                <label className="text-sm font-medium capitalize">{field}</label>
+                                <input
+                                    type={field === 'password' ? 'password' : 'text'}
+                                    placeholder={`Enter ${field}`}
+                                    className="w-full mt-1 p-2 border rounded-md"
+                                    value={(formData as any)[field]}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, [field]: e.target.value })
+                                    }
+                                    required={field !== 'password' || mode === 'create'}
+                                />
+                            </div>
+                        ))}
 
 
 
@@ -305,7 +305,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
 
                                             {platform === 'drive' && (
                                                 <>
-                                                    <div>
+                                                    {/* <div>
                                                         <label className="block font-medium mb-1">Storage Limit (MB)</label>
                                                         <input
                                                             type="number"
@@ -322,7 +322,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                                 }))
                                                             }
                                                         />
-                                                    </div>
+                                                    </div> */}
                                                     <div>
                                                         <label className="block font-medium mb-1">Shared Folder</label>
                                                         <input

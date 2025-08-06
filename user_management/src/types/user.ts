@@ -4,6 +4,7 @@ export interface User {
   id: string;
   username: string;
   avatar?: string;
+  password?:string;
   email: string;
   created_at: string;
   platforms: PlatformConfig[];
@@ -30,7 +31,7 @@ export interface MattermostConfig {
 
 export interface DriveConfig {
   platform: 'drive';
-  storageLimitMB: number;
+  // storageLimitMB: number;
   sharedFolderId: string;
   permissionLevel: 'reader' | 'writer' | 'commenter';
 }
@@ -47,12 +48,6 @@ export type UserModalProps = {
   mode: 'create' | 'edit';
   open: boolean;
   setOpen: (val: boolean) => void;
-  defaultValues?: {
-    id?: string;
-    username: string;
-    email: string;
-    password?: string;
-    platforms: Record<string, any>;
-  };
+  defaultValues?: Partial<User>;
   onSuccess?: () => void;
 };

@@ -10,14 +10,14 @@ credentials = service_account.Credentials.from_service_account_file(
 
 drive_service = build('drive', 'v3', credentials=credentials)
 
-def grant_folder_access(folder_id: str, user_email: str, role: str = "writer"):
+def grant_folder_access(shared_folder_id: str, user_email: str, role: str = "writer"):
     permission = {
         'type': 'user',
         'role': role,  # 'reader', 'writer', 'commenter'
         'emailAddress': user_email,
     }
     return drive_service.permissions().create(
-        fileId=folder_id,
+        fileId=shared_folder_id,
         body=permission,
         fields='id',
         sendNotificationEmail=False

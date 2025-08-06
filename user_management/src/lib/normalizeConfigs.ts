@@ -27,7 +27,7 @@ export const normalizeConfigs = (configs: Record<string, any>) => {
         } else if (platform === 'drive') {
             normalized.push({
                 ...base,
-                storage_limit: config.storage_limit,
+                // storage_limit: config.storage_limit,
                 shared_folder_id: config.shared_folder_id,
                 permission: config.permission,
             });
