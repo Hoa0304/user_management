@@ -377,20 +377,50 @@ def delete_user(username: str):
         platforms = user.platforms or {}
 
         # Mattermost cleanup
-        if "mattermost" in platforms:
-            mm_user_id = platforms["mattermost"].get("user_id")
+        mm_config = next((p for p in platforms if p.get("platform") == "mattermost"), None)
+        if mm_config:
+            mm_user_id = mm_config.get("user_id")
             if mm_user_id:
                 try:
                     mattermost_service.delete_mattermost_user(mm_user_id)
                 except Exception as e:
                     print(f"[Mattermost] Deactivation failed: {e}")
-
+        
         # NextCloud cleanup
-        if "nextcloud" in platforms:
+        nc_config = next((p for p in platforms if p.get("platform") == "nextcloud"), None)
+        if nc_config:
             try:
                 nextcloud_service.delete_user(username)
+                print(f"[NextCloud] Đã xoá user {username} thành công.")
             except Exception as e:
                 print(f"[NextCloud] Delete failed: {e}")
+
+        # GitLab cleanup
+        gitlab_config = next((p for p in platforms if p.get("platform") == "gitlab"), None)
+        if gitlab_config:
+            group_id = gitlab_config.get("group_id")
+            repo_ids = gitlab_config.get("repo_access", [])
+
+            gitlab_user_id = gitlab_config.get("user_id")
+            if not gitlab_user_id:
+                try:
+                    gitlab_user_id = gitlab_service.get_gitlab_user_id(username)
+                except Exception as e:
+                    print(f"[GitLab] Could not find GitLab user_id for username {username}: {e}")
+                    gitlab_user_id = None
+
+            if gitlab_user_id:
+                try:
+                    gitlab_service.remove_user_access(
+                        user_id=gitlab_user_id,
+                        group_id=group_id,
+                        repo_ids=repo_ids
+                    )
+                    gitlab_service.delete_gitlab_user(gitlab_user_id)
+                except Exception as e:
+                    print(f"[GitLab] Error delete user_id {gitlab_user_id}: {e}")
+            else:
+                print(f"[GitLab] Cannot delete user because user_id from username is not found {username}")
 
         # Google Drive cleanup
         # if "drive" in platforms:
