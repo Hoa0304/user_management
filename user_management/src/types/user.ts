@@ -32,7 +32,8 @@ export interface MattermostConfig {
 export interface DriveConfig {
   platform: 'drive';
   // storageLimitMB: number;
-  sharedFolderId: string;
+  shared_folder_id: string;
+  permission_id: string;
   role: 'reader' | 'writer' | 'commenter';
 }
 

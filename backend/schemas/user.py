@@ -151,6 +151,7 @@ class DriveUpdateConfig(BasePlatformUpdate):
     shared_folder_id: str
     role: Optional[str]
     user_email: str
+    permission_id: str
 
 PlatformUnion = Annotated[
     Union[

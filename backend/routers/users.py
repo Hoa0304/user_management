@@ -120,11 +120,14 @@ def create_user(user_data: UserCreate):
                     role=role
                 )
 
+                permission_id = result["permission_id"]
+
                 user.platforms.append(DriveOutConfig(
                     platform="drive",
                     shared_folder_id=drive_config.shared_folder_id,
                     user_email=user_data.email,
-                    role=role
+                    role=role,
+                    permission_id=permission_id
                 ).dict())
 
 
@@ -320,10 +323,15 @@ def update_user(username: str, user_update: UserUpdate):
 
             folder_id = drive_update.shared_folder_id
             role = drive_update.role.lower()
-            user_email = drive_update.user_email or user.email  # fallback
+            user_email = drive_update.user_email or user.email
+            permission_id = drive_update.permission_id
+
+            # ✅ VALIDATE ROLE
+            VALID_ROLES = {"reader", "writer", "commenter"}
+            if role not in VALID_ROLES:
+                raise HTTPException(status_code=400, detail=f"Invalid Drive role: {role}")
 
             try:
-                permission_id = google_drive.get_permission_id_by_email(folder_id, user_email)
                 if permission_id:
                     google_drive.update_permission(folder_id, permission_id, role)
                 else:
@@ -333,7 +341,6 @@ def update_user(username: str, user_update: UserUpdate):
                         role=role
                     )
                     permission_id = result["permission_id"]
-
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Drive role error: {str(e)}")
 
@@ -344,7 +351,7 @@ def update_user(username: str, user_update: UserUpdate):
                 "platform": "drive",
                 "permission_id": permission_id,
             }
-            
+
             flag_modified(user, "platforms")
 
         # Convert dict back to list for DB
@@ -367,7 +374,6 @@ def delete_user(username: str):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # --- Optional cleanup on platforms ---
         platforms = user.platforms or {}
 
         # Mattermost cleanup
@@ -386,6 +392,29 @@ def delete_user(username: str):
             except Exception as e:
                 print(f"[NextCloud] Delete failed: {e}")
 
+        # Google Drive cleanup
+        # if "drive" in platforms:
+        #     try:
+        #         drive_info = platforms["drive"]
+        #         folder_id = drive_info.get("shared_folder_id")
+        #         permission_id = drive_info.get("permission_id")
+
+        #         if folder_id and permission_id:
+        #             url = f"http://localhost:8000/google-drive/revoke-access"
+        #             params = {"folder_id": folder_id, "permission_id": permission_id}
+
+        #             response = httpx.delete(url, params=params)
+        #             print(f"[Drive] Revoke response: {response.status_code}, {response.text}")
+
+        #             if response.status_code != 200:
+        #                 raise Exception(response.json().get("detail", "Unknown error"))
+        #         else:
+        #             print(f"[Google Drive] Missing folder_id or permission_id")
+
+        #     except Exception as e:
+        #         print(f"[Google Drive] Revoke access failed: {e}")
+        #         raise HTTPException(status_code=500, detail=f"[Google Drive] {str(e)}")
+
         db.delete(user)
         db.commit()
 
@@ -394,5 +423,7 @@ def delete_user(username: str):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         db.close()
+

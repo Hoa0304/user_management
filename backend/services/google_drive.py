@@ -42,7 +42,7 @@ def grant_folder_access(shared_folder_id: str, user_email: str, role: str):
     return {"permission_id": result["id"]}
 
 
-def revoke_folder_access(folder_id: str, permission_id: str):
+def revoke_folder_access(shared_folder_id: str, permission_id: str):
     """
     Revoke a user's permission using their permission ID.
 
@@ -54,11 +54,11 @@ def revoke_folder_access(folder_id: str, permission_id: str):
         dict: API response.
     """
     return drive_service.permissions().delete(
-        fileId=folder_id, permissionId=permission_id
+        fileId=shared_folder_id, permissionId=permission_id
     ).execute()
 
 
-def list_permissions(folder_id: str):
+def list_permissions(shared_folder_id: str):
     """
     List all current permissions of a folder.
 
@@ -68,10 +68,10 @@ def list_permissions(folder_id: str):
     Returns:
         dict: A dictionary containing the list of permissions.
     """
-    return drive_service.permissions().list(fileId=folder_id).execute()
+    return drive_service.permissions().list(fileId=shared_folder_id).execute()
 
 
-def update_permission(folder_id: str, permission_id: str, new_role: str):
+def update_permission(shared_folder_id: str, permission_id: str, new_role: str):
     """
     Update the role of an existing permission.
 
@@ -84,25 +84,7 @@ def update_permission(folder_id: str, permission_id: str, new_role: str):
         dict: API response.
     """
     return drive_service.permissions().update(
-        fileId=folder_id,
+        fileId=shared_folder_id,
         permissionId=permission_id,
-        body={"permission": new_role}
+        body={"role": new_role}
     ).execute()
-
-
-def get_permission_id_by_email(folder_id: str, user_email: str):
-    """
-    Retrieve the permission ID of a user by their email.
-
-    Args:
-        folder_id (str): The ID of the folder.
-        user_email (str): The email address of the user.
-
-    Returns:
-        str or None: The permission ID if found, otherwise None.
-    """
-    permissions = drive_service.permissions().list(fileId=folder_id).execute()
-    for permission in permissions.get("permissions", []):
-        if permission.get("emailAddress") == user_email:
-            return permission.get("id")
-    return None

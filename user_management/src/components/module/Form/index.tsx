@@ -67,8 +67,9 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                         }),
                         ...(platform === 'drive' && {
                             shared_folder_id: '',
-                            role: 'viewer',
+                            role: 'reader',
                             user_email:  formData.email,
+                            permission_id: ''
                         }),
                     },
                 }));
@@ -343,6 +344,24 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                         />
                                                     </div>
                                                     <div>
+                                                        <label className="block font-medium mb-1">Permission Id</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. 1D_c5qz8XN..."
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.permission_id || ''}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        permission_id: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
                                                         <label className="block font-medium mb-1">Permission Level</label>
                                                         <select
                                                             className="w-full border rounded-md p-2"
@@ -357,7 +376,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                                 }))
                                                             }
                                                         >
-                                                            <option value="viewer">Viewer</option>
+                                                            <option value="reader">Reader</option>
                                                             <option value="commenter">Commenter</option>
                                                             <option value="writer">Writer</option>
                                                         </select>

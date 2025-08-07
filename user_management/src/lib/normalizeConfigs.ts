@@ -28,6 +28,7 @@ export const normalizeConfigs = (configs: Record<string, any>,userEmail?: string
                 // storage_limit: config.storage_limit,
                 shared_folder_id: config.shared_folder_id,
                 user_email: userEmail,
+                permission_id: config.permission_id,
                 role: config.role,
             });
         } else if (platform === 'nextcloud') {

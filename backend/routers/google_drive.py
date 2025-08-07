@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException,Body
 from pydantic import BaseModel
 from services.google_drive import grant_folder_access, revoke_folder_access, update_permission, list_permissions
 
@@ -6,10 +6,9 @@ router = APIRouter(
     tags=["Google Drive Integration"]
 )
 
-class AccessRequest(BaseModel):
+class RevokeAccessRequest(BaseModel):
     folder_id: str
-    user_email: str
-    role: str
+    permission_id: str
 
 @router.post("/grant-access")
 def api_grant_access(
@@ -24,13 +23,16 @@ def api_grant_access(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/revoke-access")
-def api_revoke_access(folder_id: str, permission_id: str):
+def api_revoke_access(data: RevokeAccessRequest = Body(...)):
+    """
+    Revoke a user's access using permission ID.
+    """
     try:
-        revoke_folder_access(folder_id, permission_id)
+        revoke_folder_access(data.folder_id, data.permission_id)
         return {"status": "revoked"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+                            
 @router.put("/update-access")
 def api_update_access(folder_id: str, permission_id: str, new_role: str):
     try:
