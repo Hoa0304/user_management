@@ -14,12 +14,7 @@ def create_user(userid: str, password: str, email: str):
     if email:
         payload["email"] = email
 
-    headers = {
-        **OCS_HEADERS,
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    response = requests.post(url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=headers, data=payload)
+    response = requests.post(url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=OCS_HEADERS, data=payload)
     if response.status_code == 200:
         return {"message": "User created successfully."}
     

@@ -1,18 +1,6 @@
 import os
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
-# Load credentials
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "service_account.json")
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-
-credentials = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES
-)
-
-# Build the Drive API client
-drive_service = build("drive", "v3", credentials=credentials)
-
+import config
 
 def grant_folder_access(shared_folder_id: str, user_email: str, role: str):
     """
@@ -32,7 +20,7 @@ def grant_folder_access(shared_folder_id: str, user_email: str, role: str):
         "emailAddress": user_email,
     }
 
-    result = drive_service.permissions().create(
+    result = config.drive_service.permissions().create(
         fileId=shared_folder_id,
         body=permission,
         fields="id",
@@ -53,7 +41,7 @@ def revoke_folder_access(shared_folder_id: str, permission_id: str):
     Returns:
         dict: API response.
     """
-    return drive_service.permissions().delete(
+    return config.drive_service.permissions().delete(
         fileId=shared_folder_id, permissionId=permission_id
     ).execute()
 
@@ -68,7 +56,7 @@ def list_permissions(shared_folder_id: str):
     Returns:
         dict: A dictionary containing the list of permissions.
     """
-    return drive_service.permissions().list(fileId=shared_folder_id).execute()
+    return config.drive_service.permissions().list(fileId=shared_folder_id).execute()
 
 
 def update_permission(shared_folder_id: str, permission_id: str, new_role: str):
@@ -83,7 +71,7 @@ def update_permission(shared_folder_id: str, permission_id: str, new_role: str):
     Returns:
         dict: API response.
     """
-    return drive_service.permissions().update(
+    return config.drive_service.permissions().update(
         fileId=shared_folder_id,
         permissionId=permission_id,
         body={"role": new_role}
