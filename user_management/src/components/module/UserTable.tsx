@@ -35,11 +35,41 @@ export default function UserTable() {
     setEditUser(user);
     setEditOpen(true);
   };
-
   const handleDelete = async () => {
     if (!deleteUser) return;
 
     try {
+      const drivePlatform = (deleteUser.platforms || []).find(
+        (p) => p.platform === 'drive'
+      );
+
+      if (drivePlatform) {
+        const shared_folder_id = drivePlatform.shared_folder_id;
+        const permission_id = drivePlatform.permission_id;
+
+        if (shared_folder_id && permission_id) {
+          try {
+            const revokeRes = await axios.delete(
+              `http://localhost:8000/google-drive/revoke-access`,
+              {
+                data: {
+                  folder_id: shared_folder_id,
+                  permission_id: permission_id
+                },
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            console.log('[Drive] Revoke success:', revokeRes.data);
+          } catch (err) {
+            console.error('[Drive] Revoke failed:', err);
+          }
+        } else {
+          console.warn('[Drive] Missing folder_id or permission_id');
+        }
+      }
+
       await axios.delete(`http://localhost:8000/api/users/${deleteUser.username}`);
       refetch();
     } catch (error) {

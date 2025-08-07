@@ -14,12 +14,7 @@ def create_user(userid: str, password: str, email: str):
     if email:
         payload["email"] = email
 
-    headers = {
-        **OCS_HEADERS,
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    response = requests.post(url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=headers, data=payload)
+    response = requests.post(url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=OCS_HEADERS, data=payload)
     if response.status_code == 200:
         return {"message": "User created successfully."}
     
@@ -141,7 +136,6 @@ def set_user_quota(userid: str, quota: str):
     }
 
     response = requests.put(url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=headers, data=payload)
-
     try:
         res_data = response.json()
         if res_data["ocs"]["meta"]["status"] != "ok":
@@ -180,3 +174,16 @@ def get_user(userid: str):
         pass
 
     return False
+
+def get_share_id_by_user(folder_path: str, userid: str) -> int:
+    list_url = f"{NEXTCLOUD_BASE_URL}/ocs/v2.php/apps/files_sharing/api/v1/shares"
+    response = requests.get(list_url, auth=(ADMIN_USERNAME, ADMIN_PASSWORD), headers=OCS_HEADERS)
+    
+    shares = response.json().get("ocs", {}).get("data", [])
+    
+    for share in shares:
+        if share["path"] == folder_path and share["share_with"] == userid:
+            return share["id"]
+    
+    raise Exception("Matching share not found.")
+

@@ -1,4 +1,5 @@
 import logging
+from utils.roles import map_role_to_access_level
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -7,9 +8,9 @@ import os
 import time
 from db import SessionLocal
 from models.user import User
-from schemas.user import NextCloudConfig, UserCreate, UserOut, MattermostConfig, GitLabConfig, UserUpdate
+from schemas.user import DriveConfig, DriveOutConfig, NextCloudConfig, UserCreate, UserOut, MattermostConfig, GitLabConfig, UserUpdate, platform_model_map 
 from utils.security import hash_password
-from services import gitlab_service, mattermost_service, nextcloud_service
+from services import gitlab_service, mattermost_service, nextcloud_service, google_drive
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ def create_user(user_data: UserCreate):
             email=user_data.email,
             password_hash=hashed_pw,
             created_at=datetime.utcnow(),
-            platforms=[]  # ✅ list, không phải dict
+            platforms=[]
         )
 
         platforms = user_data.platforms or []
@@ -108,6 +109,27 @@ def create_user(user_data: UserCreate):
                     )
 
                 user.platforms.append(nc_config.model_dump()) 
+            
+            elif platform_config.platform == "drive":
+                drive_config: DriveConfig = platform_config
+                role = drive_config.role
+
+                result = google_drive.grant_folder_access(
+                    shared_folder_id=drive_config.shared_folder_id,
+                    user_email=user_data.email,
+                    role=role
+                )
+
+                permission_id = result["permission_id"]
+
+                user.platforms.append(DriveOutConfig(
+                    platform="drive",
+                    shared_folder_id=drive_config.shared_folder_id,
+                    user_email=user_data.email,
+                    role=role,
+                    permission_id=permission_id
+                ).dict())
+
 
         db.add(user)
         db.commit()
@@ -145,17 +167,18 @@ def get_all_users():
         ]
     finally:
         db.close()
-        
+
 @router.patch("/users/{username}", response_model=UserOut)
 def update_user(username: str, user_update: UserUpdate):
-    print(f"Update data: {user_update}")
     db: Session = SessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        platforms = user.platforms or {}
+        # Convert user.platforms to dict for internal use
+        platforms_list = user.platforms or []
+        platforms = {p.get("platform"): p for p in platforms_list if isinstance(p, dict)}
 
         # Update email and password
         if user_update.email:
@@ -164,10 +187,19 @@ def update_user(username: str, user_update: UserUpdate):
             from utils.security import hash_password
             user.password_hash = hash_password(user_update.password)
 
-        # Convert platforms list → dict by platform name for easier lookup
-        platform_map = {p.platform: p for p in user_update.platforms or []}
+        # Parse platforms from update
+        typed_platforms = []
+        for item in user_update.platforms or []:
+            if isinstance(item, dict):
+                model = platform_model_map.get(item.get("platform"))
+                if model:
+                    typed_platforms.append(model(**item))
+            else:
+                typed_platforms.append(item)
 
-        ### GITLAB UPDATE ###
+        platform_map = {p.platform: p for p in typed_platforms}
+
+        # GITLAB
         if "gitlab" in platforms and "gitlab" in platform_map:
             gl_conf = platforms["gitlab"]
             gl_update = platform_map["gitlab"]
@@ -176,24 +208,26 @@ def update_user(username: str, user_update: UserUpdate):
             if not gitlab_user_id:
                 raise HTTPException(status_code=400, detail="Missing GitLab user ID")
 
-            new_role = getattr(gl_update, "role", None)
+            if not gl_update.role:
+                raise HTTPException(status_code=400, detail="Missing role")
+
+            access_level = map_role_to_access_level(gl_update.role)
+
             new_group_id = getattr(gl_update, "group_id", None)
 
-            if new_role and new_group_id:
+            if access_level and new_group_id:
                 gitlab_service.update_user_role(
                     user_id=gitlab_user_id,
                     group_id=new_group_id,
-                    role=new_role
+                    
+                    repo_ids=getattr(gl_update, "repo_access", []),
+                    access_level=access_level,
                 )
 
-            if "gitlab" not in user.platforms:
-                user.platforms["gitlab"] = {}
-
-            user.platforms["gitlab"].update(gl_update.dict(exclude_unset=True))
+            platforms["gitlab"].update(gl_update.dict(exclude_unset=True))
             flag_modified(user, "platforms")
 
-
-        ### MATTTERMOST UPDATE ###
+        # MATTERMOST
         if "mattermost" in platforms and "mattermost" in platform_map:
             mm_conf = platforms["mattermost"]
             mm_user_id = mm_conf.get("user_id")
@@ -211,7 +245,6 @@ def update_user(username: str, user_update: UserUpdate):
             if update_fields:
                 mattermost_service.update_mattermost_user(mm_user_id, update_fields)
 
-            # Role/team update
             new_role = getattr(mm_update, "role", None)
             team_name = mm_conf.get("team")
             if new_role and team_name:
@@ -221,15 +254,12 @@ def update_user(username: str, user_update: UserUpdate):
                     role=new_role
                 )
 
-            if "mattermost" not in user.platforms:
-                user.platforms["mattermost"] = {}
-
-            user.platforms["mattermost"].update(mm_update.dict(exclude_unset=True))
+            platforms["mattermost"].update(mm_update.dict(exclude_unset=True))
             flag_modified(user, "platforms")
 
-        ### NEXTCLOUD UPDATE ###
-        if "nextcloud" in platforms and "nextcloud" in platform_map:
-            nc_conf = platforms["nextcloud"]
+        # NEXTCLOUD
+        if "nextcloud" in platform_map:
+            nc_conf = platforms.get("nextcloud", {})
             nc_update = platform_map["nextcloud"]
             username_nc = user.username
 
@@ -238,7 +268,7 @@ def update_user(username: str, user_update: UserUpdate):
             if user_update.password:
                 nextcloud_service.update_user(username_nc, "password", user_update.password)
 
-            if nc_update.storage_limit:
+            if nc_update.storage_limit is not None:
                 nextcloud_service.set_user_quota(username_nc, f"{nc_update.storage_limit} MB")
 
             old_group = nc_conf.get("group_id")
@@ -250,7 +280,7 @@ def update_user(username: str, user_update: UserUpdate):
 
             old_folder = nc_conf.get("shared_folder_id")
             new_folder = nc_update.shared_folder_id
-            new_permission = nc_update.permission or "viewer"
+            new_permission = (nc_update.permission).lower()
 
             if old_folder and old_folder != new_folder:
                 try:
@@ -263,21 +293,69 @@ def update_user(username: str, user_update: UserUpdate):
                     "viewer": 1,
                     "editor": 15,
                 }
-                nextcloud_service.share_folder(
-                    folder_path=new_folder,
-                    userid=username_nc,
-                    permission=permission_map.get(new_permission, 1)
-                )
+                new_perm_val = permission_map.get(new_permission, 1)
 
-            if "nextcloud" not in user.platforms:
-                user.platforms["nextcloud"] = {}
+                if new_folder == old_folder:
+                    # update permission if folder same 
+                    try:
+                        share_id = nextcloud_service.get_share_id_by_user(new_folder, username_nc)
+                        nextcloud_service.update_folder_permission_all_user(share_id, new_perm_val)
+                    except Exception as e:
+                        print("Failed to update permission:", e)
+                else:
+                    # Share new if folder change
+                    nextcloud_service.share_folder(
+                        folder_path=new_folder,
+                        userid=username_nc,
+                        permission=new_perm_val
+                    )
 
-            user.platforms["nextcloud"].update(nc_update.dict(exclude_unset=True))
+            platforms["nextcloud"] = {
+                **nc_conf,
+                **nc_update.dict(exclude_unset=True)
+            }
             flag_modified(user, "platforms")
 
-        if user_update.platforms:
+        # GOOGLE DRIVE
+        if "drive" in platform_map:
+            drive_conf = platforms.get("drive", {})
+            drive_update = platform_map["drive"]
+
+            folder_id = drive_update.shared_folder_id
+            role = drive_update.role.lower()
+            user_email = drive_update.user_email or user.email
+            permission_id = drive_update.permission_id
+
+            # ✅ VALIDATE ROLE
+            VALID_ROLES = {"reader", "writer", "commenter"}
+            if role not in VALID_ROLES:
+                raise HTTPException(status_code=400, detail=f"Invalid Drive role: {role}")
+
+            try:
+                if permission_id:
+                    google_drive.update_permission(folder_id, permission_id, role)
+                else:
+                    result = google_drive.grant_folder_access(
+                        shared_folder_id=folder_id,
+                        user_email=user_email,
+                        role=role
+                    )
+                    permission_id = result["permission_id"]
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Drive role error: {str(e)}")
+
+            platforms["drive"] = {
+                **drive_conf,
+                **drive_update.dict(exclude_unset=True),
+                "user_email": user_email,
+                "platform": "drive",
+                "permission_id": permission_id,
+            }
+
             flag_modified(user, "platforms")
 
+        # Convert dict back to list for DB
+        user.platforms = list(platforms.values())
         db.commit()
         db.refresh(user)
         return user
@@ -288,8 +366,6 @@ def update_user(username: str, user_update: UserUpdate):
     finally:
         db.close()
 
-
-        
 @router.delete("/users/{username}", response_model=dict)
 def delete_user(username: str):
     db: Session = SessionLocal()
@@ -298,24 +374,76 @@ def delete_user(username: str):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # --- Optional cleanup on platforms ---
         platforms = user.platforms or {}
 
         # Mattermost cleanup
-        if "mattermost" in platforms:
-            mm_user_id = platforms["mattermost"].get("user_id")
+        mm_config = next((p for p in platforms if p.get("platform") == "mattermost"), None)
+        if mm_config:
+            mm_user_id = mm_config.get("user_id")
             if mm_user_id:
                 try:
                     mattermost_service.delete_mattermost_user(mm_user_id)
                 except Exception as e:
                     print(f"[Mattermost] Deactivation failed: {e}")
-
+        
         # NextCloud cleanup
-        if "nextcloud" in platforms:
+        nc_config = next((p for p in platforms if p.get("platform") == "nextcloud"), None)
+        if nc_config:
             try:
                 nextcloud_service.delete_user(username)
+                print(f"[NextCloud] Đã xoá user {username} thành công.")
             except Exception as e:
                 print(f"[NextCloud] Delete failed: {e}")
+
+        # GitLab cleanup
+        gitlab_config = next((p for p in platforms if p.get("platform") == "gitlab"), None)
+        if gitlab_config:
+            group_id = gitlab_config.get("group_id")
+            repo_ids = gitlab_config.get("repo_access", [])
+
+            gitlab_user_id = gitlab_config.get("user_id")
+            if not gitlab_user_id:
+                try:
+                    gitlab_user_id = gitlab_service.get_gitlab_user_id(username)
+                except Exception as e:
+                    print(f"[GitLab] Could not find GitLab user_id for username {username}: {e}")
+                    gitlab_user_id = None
+
+            if gitlab_user_id:
+                try:
+                    gitlab_service.remove_user_access(
+                        user_id=gitlab_user_id,
+                        group_id=group_id,
+                        repo_ids=repo_ids
+                    )
+                    gitlab_service.delete_gitlab_user(gitlab_user_id)
+                except Exception as e:
+                    print(f"[GitLab] Error delete user_id {gitlab_user_id}: {e}")
+            else:
+                print(f"[GitLab] Cannot delete user because user_id from username is not found {username}")
+
+        # Google Drive cleanup
+        # if "drive" in platforms:
+        #     try:
+        #         drive_info = platforms["drive"]
+        #         folder_id = drive_info.get("shared_folder_id")
+        #         permission_id = drive_info.get("permission_id")
+
+        #         if folder_id and permission_id:
+        #             url = f"http://localhost:8000/google-drive/revoke-access"
+        #             params = {"folder_id": folder_id, "permission_id": permission_id}
+
+        #             response = httpx.delete(url, params=params)
+        #             print(f"[Drive] Revoke response: {response.status_code}, {response.text}")
+
+        #             if response.status_code != 200:
+        #                 raise Exception(response.json().get("detail", "Unknown error"))
+        #         else:
+        #             print(f"[Google Drive] Missing folder_id or permission_id")
+
+        #     except Exception as e:
+        #         print(f"[Google Drive] Revoke access failed: {e}")
+        #         raise HTTPException(status_code=500, detail=f"[Google Drive] {str(e)}")
 
         db.delete(user)
         db.commit()
@@ -325,5 +453,7 @@ def delete_user(username: str):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         db.close()
+

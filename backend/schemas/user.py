@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Literal, Union, Optional, Dict, List, Annotated
 
 class GitLabConfig(BaseModel):
@@ -14,7 +14,12 @@ class MattermostConfig(BaseModel):
     server_name: str
     team: str
     role: str
-    default_channels: List[str]
+    # default_channels: List[str]
+
+class DriveConfig(BaseModel):
+    platform: Literal["drive"]
+    shared_folder_id: str
+    role: Optional[str] = "writer"
 
 class NextCloudConfig(BaseModel):
     platform: Literal["nextcloud"]
@@ -24,7 +29,7 @@ class NextCloudConfig(BaseModel):
     permission: str
 
 PlatformConfig = Annotated[
-    Union[GitLabConfig, MattermostConfig, NextCloudConfig],
+    Union[GitLabConfig, MattermostConfig, NextCloudConfig, DriveConfig],
     Field(discriminator="platform")
 ]
 
@@ -34,6 +39,12 @@ class UserCreate(BaseModel):
     password: str
     platforms: Optional[List[PlatformConfig]] = None
     
+class DriveOutConfig(BaseModel):
+    platform: Literal["drive"] = "drive"
+    shared_folder_id: str
+    user_email: str
+    role: str
+    permission_id: Optional[str] = None
 
 class GitLabOutConfig(BaseModel):
     platform: Literal["gitlab"] = "gitlab"
@@ -67,7 +78,7 @@ class UserOut(BaseModel):
     username: str
     email: str
     created_at: Optional[datetime] = None
-    platforms: List[Union[GitLabOutConfig, MattermostOutConfig, NextCloudOutConfig]] = []
+    platforms: List[Union[GitLabOutConfig, MattermostOutConfig, NextCloudOutConfig, DriveOutConfig]] = []
 
     model_config = {
         "from_attributes": True
@@ -116,30 +127,55 @@ class BasePlatformUpdate(BaseModel):
     platform: str
 
 class GitLabUpdateRole(BasePlatformUpdate):
+    platform: Literal["gitlab"]
     group_id: Optional[str]
     repo_access: Optional[List[int]]
     role: str
 
 class MattermostUpdateConfig(BasePlatformUpdate):
+    platform: Literal["mattermost"]
     role: Optional[str]
     team: Optional[str]
     server_name: Optional[str]
-    default_channels: Optional[List[str]]
+    # default_channels: Optional[List[str]]
 
 class NextCloudUpdateConfig(BasePlatformUpdate):
+    platform: Literal["nextcloud"]
     group_id: Optional[str]
     shared_folder_id: Optional[str]
     storage_limit: Optional[int]
     permission: Optional[str]
 
-PlatformUnion = Union[GitLabUpdateRole, MattermostUpdateConfig, NextCloudUpdateConfig]
+class DriveUpdateConfig(BasePlatformUpdate):
+    platform: Literal["drive"]
+    shared_folder_id: str
+    role: Optional[str]
+    user_email: str
+    permission_id: str
+
+PlatformUnion = Annotated[
+    Union[
+        GitLabUpdateRole,
+        MattermostUpdateConfig,
+        NextCloudUpdateConfig,
+        DriveUpdateConfig
+    ],
+    Field(discriminator="platform")
+]
+
+platform_model_map = {
+    "gitlab": GitLabUpdateRole,
+    "mattermost": MattermostUpdateConfig,
+    "nextcloud": NextCloudUpdateConfig,
+    "drive": DriveUpdateConfig
+}
 
 class UserUpdate(BaseModel):
     email: Optional[str]
     password: Optional[str] = None 
     username: Optional[str]
-    platforms: Optional[List[PlatformUnion]] = []
+    platforms: Optional[List[PlatformUnion]] = Field(default_factory=list)
 
-    @validator("password")
+    @field_validator("password", mode="before")
     def empty_string_to_none(cls, v):
         return v or None

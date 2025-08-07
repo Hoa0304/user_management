@@ -32,10 +32,11 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             setFormData({
                 username: defaultValues.username || '',
                 email: defaultValues.email || '',
-                password: defaultValues.password || '',
+                password: (defaultValues as any).password || '',
             });
-            
+
             const normalized = denormalizeConfigs(defaultValues.platforms || []);
+            console.log("Normalized Platforms:", normalized);
             setSelectedPlatforms(Object.keys(normalized));
             setPlatformConfigs(normalized);
         }
@@ -64,6 +65,12 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                             shared_folder_id: '',
                             permission: 'viewer',
                         }),
+                        ...(platform === 'drive' && {
+                            shared_folder_id: '',
+                            role: 'reader',
+                            user_email:  formData.email,
+                            permission_id: ''
+                        }),
                     },
                 }));
             }
@@ -75,15 +82,11 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (formData.password === '') {
-            delete formData.password;
-        }
-
         const payload = {
             ...formData,
-            platforms: normalizeConfigs(platformConfigs),
+            ...(formData.password !== '' && { password: formData.password }),
+            platforms: normalizeConfigs(platformConfigs, formData.email),
         };
-        console.log(formData)
 
         try {
             if (mode === 'create') {
@@ -94,11 +97,12 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             onSuccess?.();
             setOpen(false);
         } catch (err) {
-            const error = err as AxiosError<{ detail?: string }>;
-            console.error('Error:', error.response?.data || error.message);
-            alert(`Error: ${error.response?.data?.detail || error.message}`);
+            if (axios.isAxiosError(err)) {
+                console.error("Validation error:", err.response?.data);
+            } else {
+                console.error("Unknown error", err);
+            }
         }
-
     };
 
     return (
@@ -113,24 +117,22 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                     <DialogTitle>{mode === 'create' ? 'Create New User' : 'Edit User'}</DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto max-h-[75vh] mt-2 scroll-hidden">
-                        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                           {['username', 'email', 'password'].map((field) => (
-  <div key={field}>
-    <label className="text-sm font-medium capitalize">{field}</label>
-    <input
-      type={field === 'password' ? 'password' : 'text'}
-      placeholder={`Enter ${field}`}
-      className="w-full mt-1 p-2 border rounded-md"
-      value={(formData as any)[field]}
-      onChange={(e) =>
-        setFormData({ ...formData, [field]: e.target.value })
-      }
-      required={field !== 'password' || mode === 'create'}
-    />
-  </div>
-))}
-
-
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+                        {['username', 'email', 'password'].map((field) => (
+                            <div key={field}>
+                                <label className="text-sm font-medium capitalize">{field}</label>
+                                <input
+                                    type={field === 'password' ? 'password' : 'text'}
+                                    placeholder={`Enter ${field}`}
+                                    className="w-full mt-1 p-2 border rounded-md"
+                                    value={(formData as any)[field]}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, [field]: e.target.value })
+                                    }
+                                    required={field !== 'password' || mode === 'create'}
+                                />
+                            </div>
+                        ))}
 
                         {/* Platforms */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,7 +307,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
 
                                             {platform === 'drive' && (
                                                 <>
-                                                    <div>
+                                                    {/* <div>
                                                         <label className="block font-medium mb-1">Storage Limit (MB)</label>
                                                         <input
                                                             type="number"
@@ -322,7 +324,7 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                                 }))
                                                             }
                                                         />
-                                                    </div>
+                                                    </div> */}
                                                     <div>
                                                         <label className="block font-medium mb-1">Shared Folder</label>
                                                         <input
@@ -342,24 +344,41 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block font-medium mb-1">Permission Level</label>
-                                                        <select
+                                                        <label className="block font-medium mb-1">Permission Id</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. 1D_c5qz8XN..."
                                                             className="w-full border rounded-md p-2"
-                                                            value={platformConfigs[platform]?.permission || ''}
+                                                            value={platformConfigs[platform]?.permission_id || ''}
                                                             onChange={(e) =>
                                                                 setPlatformConfigs((prev) => ({
                                                                     ...prev,
                                                                     [platform]: {
                                                                         ...prev[platform],
-                                                                        permission: e.target.value.toLowerCase(),
+                                                                        permission_id: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block font-medium mb-1">Permission Level</label>
+                                                        <select
+                                                            className="w-full border rounded-md p-2"
+                                                            value={platformConfigs[platform]?.role}
+                                                            onChange={(e) =>
+                                                                setPlatformConfigs((prev) => ({
+                                                                    ...prev,
+                                                                    [platform]: {
+                                                                        ...prev[platform],
+                                                                        role: e.target.value,
                                                                     },
                                                                 }))
                                                             }
                                                         >
-                                                            <option>Viewer</option>
-                                                            <option>Commenter</option>
-                                                            <option>Writer</option>
-                                                            <option>Organizer</option>
+                                                            <option value="reader">Reader</option>
+                                                            <option value="commenter">Commenter</option>
+                                                            <option value="writer">Writer</option>
                                                         </select>
                                                     </div>
                                                 </>
