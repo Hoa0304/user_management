@@ -391,7 +391,6 @@ def delete_user(username: str):
         if nc_config:
             try:
                 nextcloud_service.delete_user(username)
-                print(f"[NextCloud] Đã xoá user {username} thành công.")
             except Exception as e:
                 print(f"[NextCloud] Delete failed: {e}")
 
