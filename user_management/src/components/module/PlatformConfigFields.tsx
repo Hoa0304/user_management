@@ -15,6 +15,17 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
   if (platform === 'gitlab') {
     return (
       <div className="grid gap-3 text-sm text-gray-800">
+        {/* Group ID */}
+        <div>
+          <label className="block font-medium mb-1">Group ID</label>
+          <input
+            type="text"
+            className="w-full border rounded-md p-2"
+            placeholder="devs"
+            value={config.group_id || ''}
+            onChange={(e) => updateField('group_id', e.target.value)}
+          />
+        </div>
         {/* Role */}
         <div>
           <label className="block font-medium mb-1">Role</label>
@@ -30,22 +41,13 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
             <option>Owner</option>
           </select>
         </div>
-        {/* Group ID */}
-        <div>
-          <label className="block font-medium mb-1">Group ID</label>
-          <input
-            type="text"
-            className="w-full border rounded-md p-2"
-            value={config.group_id || ''}
-            onChange={(e) => updateField('group_id', e.target.value)}
-          />
-        </div>
         {/* Repo Access */}
         <div>
           <label className="block font-medium mb-1">Repo Access</label>
           <input
             type="text"
             className="w-full border rounded-md p-2"
+            placeholder="1,2"
             value={(config.repo_access || []).join(', ')}
             onChange={(e) =>
               updateField(
@@ -67,6 +69,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
           <label className="block font-medium mb-1">Server Name</label>
           <input
             type="text"
+            placeholder="ikya.dev.com"
             className="w-full border rounded-md p-2"
             value={config.server_name || ''}
             onChange={(e) => updateField('server_name', e.target.value)}
@@ -77,6 +80,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
           <label className="block font-medium mb-1">Team</label>
           <input
             type="text"
+            placeholder="ikya"
             className="w-full border rounded-md p-2"
             value={config.team || ''}
             onChange={(e) => updateField('team', e.target.value)}
@@ -88,6 +92,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
           <input
             type="text"
             className="w-full border rounded-md p-2"
+            placeholder="Town Square, Off-Topic"
             value={(config.default_channels || []).join(', ')}
             onChange={(e) =>
               updateField(
@@ -118,10 +123,11 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
       <div className="grid gap-3 text-sm text-gray-800">
         {/* Storage Limit */}
         <div>
-          <label className="block font-medium mb-1">Storage Limit (GB)</label>
+          <label className="block font-medium mb-1">Storage Limit (MB)</label>
           <input
             type="number"
             className="w-full border rounded-md p-2"
+            placeholder="512"
             value={config.storage_limit || ''}
             onChange={(e) => updateField('storage_limit', e.target.value)}
           />
@@ -132,6 +138,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
           <input
             type="text"
             className="w-full border rounded-md p-2"
+            placeholder="/documents"
             value={config.shared_folder_id || ''}
             onChange={(e) => updateField('shared_folder_id', e.target.value)}
           />
@@ -161,6 +168,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
           <input
             type="text"
             className="w-full border rounded-md p-2"
+            placeholder="1D_c5qz8XNspoGn1o5Ps5NfWU72OSFYES"
             value={config.shared_folder_id || ''}
             onChange={(e) => updateField('shared_folder_id', e.target.value)}
           />
@@ -186,6 +194,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
             className="w-full border rounded-md p-2"
             value={config.user_email || ''}
             onChange={(e) => updateField('user_email', e.target.value)}
+            readOnly
           />
         </div>
         {/* Permission ID */}
@@ -196,6 +205,7 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
             className="w-full border rounded-md p-2"
             value={config.permission_id || ''}
             onChange={(e) => updateField('permission_id', e.target.value)}
+            readOnly
           />
         </div>
       </div>
