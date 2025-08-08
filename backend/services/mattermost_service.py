@@ -112,7 +112,7 @@ def update_mattermost_user(user_id, update_data):
     res = requests.put(url, headers=HEADERS_MATTERMOST, json=update_data)
     return res.json()
 
-def delete_mattermost_user(user_id, permanent=True):
+def delete_mattermost_user(user_id, permanent=False):
     """
     Delete or deactivate a Mattermost user.
 
@@ -165,7 +165,7 @@ def update_user_team_role(user_id: str, team_name: str, role: str):
         dict: API response or error message.
     """
     role_mapping = {
-        "Admin": "team_user team_admin",
+        "Admin": "team_admin",
         "Member": "team_user"
     }
     mattermost_roles = role_mapping.get(role)

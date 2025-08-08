@@ -25,7 +25,7 @@ export interface MattermostConfig {
   server_name: string;
   team: string;
   user_id?: string;
-  role: 'team_member' | 'team_admin';
+  role: 'Member' | 'Admin';
   default_channels: string[];
 }
 
