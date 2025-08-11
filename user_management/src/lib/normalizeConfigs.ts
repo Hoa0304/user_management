@@ -36,7 +36,7 @@ export const normalizeConfigs = (configs: Record<string, any>,userEmail?: string
                 ...base,
                 role: config.role,
                 group_id: config.group_id,
-                storage_limit: config.storage_limit,
+                storage_limit: config.storage_limit ? parseFloat(config.storage_limit) : null,
                 shared_folder_id: config.shared_folder_id,
                 permission: config.permission,
             });

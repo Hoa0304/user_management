@@ -129,7 +129,23 @@ export default function PlatformConfigFields({ platform, config, setConfig }: Pr
             className="w-full border rounded-md p-2"
             placeholder="512"
             value={config.storage_limit || ''}
-            onChange={(e) => updateField('storage_limit', e.target.value)}
+            onChange={(e) =>
+              updateField(
+                'storage_limit',
+                e.target.value === '' ? null : Number(e.target.value)
+              )
+            }
+          />
+        </div>
+        {/* Group ID */}
+        <div>
+          <label className="block font-medium mb-1">Group ID</label>
+          <input
+            type="text"
+            className="w-full border rounded-md p-2"
+            placeholder="devs"
+            value={config.group_id || ''}
+            onChange={(e) => updateField('group_id', e.target.value)}
           />
         </div>
         {/* Shared Folder ID */}
@@ -222,7 +238,7 @@ PlatformConfigFields.getDefaultConfig = (platform: string, email: string) => {
     case 'mattermost':
       return { server_name: '', team: '', default_channels: [], role: 'Member' };
     case 'nextcloud':
-      return { storage_limit: '', shared_folder_id: '', permission: 'viewer' };
+      return { storage_limit: '', group_id: '', shared_folder_id: '', permission: 'viewer' };
     case 'drive':
       return { shared_folder_id: '', role: 'reader', user_email: email, permission_id: '' };
     default:
