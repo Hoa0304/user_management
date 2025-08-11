@@ -1,3 +1,4 @@
+import logging
 from services.user_service import create_user_with_platforms, delete_user_and_cleanup, update_user_with_platforms
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
@@ -13,8 +14,12 @@ def create_user(user_data: UserCreate):
     try:
         return create_user_with_platforms(db, user_data)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logging.error(f"User creation failed: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise
+
     finally:
         db.close()
 
