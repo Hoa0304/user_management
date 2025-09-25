@@ -8,7 +8,6 @@ import { Pencil, Trash2, Users } from 'lucide-react';
 import { useUserQuery } from '@/hooks/useUserQuery';
 import UserModal from './Form';
 import { User } from '@/types/user';
-
 import { colorMap, iconMap } from '@/lib/constants';
 import {
   AlertDialog,
@@ -21,13 +20,12 @@ import {
   AlertDialogAction,
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
-import axios from 'axios';
+
+import { deleteUserApi, revokeDriveAccessApi } from '@/lib/api';
 
 export default function UserTable() {
   const { data: users = [], isLoading, isError, refetch } = useUserQuery();
-
   const [editOpen, setEditOpen] = useState(false);
-
   const [editUser, setEditUser] = useState<User | undefined>();
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
 
@@ -35,6 +33,7 @@ export default function UserTable() {
     setEditUser(user);
     setEditOpen(true);
   };
+
   const handleDelete = async () => {
     if (!deleteUser) return;
 
@@ -42,35 +41,19 @@ export default function UserTable() {
       const drivePlatform = (deleteUser.platforms || []).find(
         (p) => p.platform === 'drive'
       );
-
-      if (drivePlatform) {
-        const shared_folder_id = drivePlatform.shared_folder_id;
-        const permission_id = drivePlatform.permission_id;
-
-        if (shared_folder_id && permission_id) {
-          try {
-            const revokeRes = await axios.delete(
-              `http://localhost:8000/google-drive/revoke-access`,
-              {
-                data: {
-                  folder_id: shared_folder_id,
-                  permission_id: permission_id
-                },
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
-            console.log('[Drive] Revoke success:', revokeRes.data);
-          } catch (err) {
-            console.error('[Drive] Revoke failed:', err);
-          }
-        } else {
-          console.warn('[Drive] Missing folder_id or permission_id');
+      if (drivePlatform?.shared_folder_id && drivePlatform?.permission_id) {
+        try {
+          const revokeRes = await revokeDriveAccessApi(
+            drivePlatform.shared_folder_id,
+            drivePlatform.permission_id
+          );
+          console.log('[Drive] Revoke success:', revokeRes.data);
+        } catch (err) {
+          console.error('[Drive] Revoke failed:', err);
         }
       }
 
-      await axios.delete(`http://localhost:8000/api/users/${deleteUser.username}`);
+      await deleteUserApi(deleteUser.username);
       refetch();
     } catch (error) {
       console.error('Delete failed', error);
@@ -133,7 +116,6 @@ export default function UserTable() {
                             <div className="text-white">{iconMap[p.platform] || '?'}</div>
                           </div>
                         ))}
-
                       </div>
                     </td>
                     <td className="py-2">
@@ -178,7 +160,6 @@ export default function UserTable() {
         </CardContent>
       </Card>
 
-      {/* Modal for Editing */}
       {editOpen && (
         <UserModal
           mode="edit"
