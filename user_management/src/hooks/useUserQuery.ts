@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { fetchAllUsersApi } from '@/lib/api';
 import { User } from '@/types/user';
 
 export const useUserQuery = () => {
@@ -7,8 +7,7 @@ export const useUserQuery = () => {
     queryKey: ['users'],
     queryFn: async () => {
       try {
-        const res = await axios.get<User[]>('http://localhost:8000/api/all_users');
-        return [...res.data];
+        return await fetchAllUsersApi();
       } catch (err) {
         console.warn('API failed, showing only mock data');
         return [];

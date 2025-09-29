@@ -12,6 +12,7 @@ import { platforms } from '@/lib/constants';
 import { denormalizeConfigs, normalizeConfigs } from '@/lib/normalizeConfigs';
 import PlatformToggle from '../PlatformToggle';
 import PlatformConfigFields from '../PlatformConfigFields';
+import { useUserMutation } from '@/hooks/useUserMutation';
 
 export default function UserModal({ mode, open, setOpen, defaultValues, onSuccess }: UserModalProps) {
     const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -47,15 +48,15 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
                 // If enable → add default config if not available
                 setPlatformConfigs((prevConfigs) => ({
                     ...prevConfigs,
-                    [platform]: prevConfigs[platform] || 
-                    PlatformConfigFields.getDefaultConfig(platform, formData.email),
+                    [platform]: prevConfigs[platform] ||
+                        PlatformConfigFields.getDefaultConfig(platform, formData.email),
                 }));
                 return [...prev, platform];
             }
         });
     };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const userMutation = useUserMutation(mode, defaultValues?.username);
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const payload = {
             ...formData,
@@ -63,17 +64,15 @@ export default function UserModal({ mode, open, setOpen, defaultValues, onSucces
             platforms: normalizeConfigs(platformConfigs, formData.email),
         };
 
-        try {
-            if (mode === 'create') {
-                await axios.post('http://localhost:8000/api/users', payload);
-            } else if (mode === 'edit' && defaultValues?.username) {
-                await axios.patch(`http://localhost:8000/api/users/${defaultValues.username}`, payload);
-            }
-            onSuccess?.();
-            setOpen(false);
-        } catch (err) {
-            console.error(err);
-        }
+        userMutation.mutate(payload, {
+            onSuccess: () => {
+                onSuccess?.();
+                setOpen(false);
+            },
+            onError: (err) => {
+                console.error(err);
+            },
+        });
     };
 
     return (

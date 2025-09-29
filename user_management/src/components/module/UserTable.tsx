@@ -8,7 +8,6 @@ import { Pencil, Trash2, Users } from 'lucide-react';
 import { useUserQuery } from '@/hooks/useUserQuery';
 import UserModal from './Form';
 import { User } from '@/types/user';
-
 import { colorMap, iconMap } from '@/lib/constants';
 import {
   AlertDialog,
@@ -21,13 +20,12 @@ import {
   AlertDialogAction,
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
-import axios from 'axios';
+
+import { deleteUserApi, revokeDriveAccessApi } from '@/lib/api';
 
 export default function UserTable() {
   const { data: users = [], isLoading, isError, refetch } = useUserQuery();
-
   const [editOpen, setEditOpen] = useState(false);
-
   const [editUser, setEditUser] = useState<User | undefined>();
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
 
@@ -35,6 +33,7 @@ export default function UserTable() {
     setEditUser(user);
     setEditOpen(true);
   };
+
   const handleDelete = async () => {
     if (!deleteUser) return;
 
@@ -42,35 +41,19 @@ export default function UserTable() {
       const drivePlatform = (deleteUser.platforms || []).find(
         (p) => p.platform === 'drive'
       );
-
-      if (drivePlatform) {
-        const shared_folder_id = drivePlatform.shared_folder_id;
-        const permission_id = drivePlatform.permission_id;
-
-        if (shared_folder_id && permission_id) {
-          try {
-            const revokeRes = await axios.delete(
-              `http://localhost:8000/google-drive/revoke-access`,
-              {
-                data: {
-                  folder_id: shared_folder_id,
-                  permission_id: permission_id
-                },
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
-            console.log('[Drive] Revoke success:', revokeRes.data);
-          } catch (err) {
-            console.error('[Drive] Revoke failed:', err);
-          }
-        } else {
-          console.warn('[Drive] Missing folder_id or permission_id');
+      if (drivePlatform?.shared_folder_id && drivePlatform?.permission_id) {
+        try {
+          const revokeRes = await revokeDriveAccessApi(
+            drivePlatform.shared_folder_id,
+            drivePlatform.permission_id
+          );
+          console.log('[Drive] Revoke success:', revokeRes.data);
+        } catch (err) {
+          console.error('[Drive] Revoke failed:', err);
         }
       }
 
-      await axios.delete(`http://localhost:8000/api/users/${deleteUser.username}`);
+      await deleteUserApi(deleteUser.username);
       refetch();
     } catch (error) {
       console.error('Delete failed', error);
@@ -83,7 +66,7 @@ export default function UserTable() {
   if (isError) return <div className="px-6 py-4 text-red-500">Failed to load users.</div>;
 
   return (
-    <div className="space-y-4 px-100">
+    <div className="space-y-4 px-4 sm:px-6 lg:px-8 xl:px-20 2xl:px-60">
       <Input placeholder="Search users by username or email..." className="p-5 bg-white" />
       <div className="text-sm mb-4 rounded-xl border shadow-sm bg-white py-5 text-muted-foreground flex items-center gap-2 pl-3">
         <Users className="w-4 h-4" />
@@ -92,15 +75,15 @@ export default function UserTable() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="max-h-[500px] overflow-y-auto scroll-hidden">
+          <div className="max-h-[400px] overflow-y-auto scroll-hidden">
             <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left border-b">
-                  <th className="py-2">User</th>
-                  <th>Email</th>
-                  <th>Platforms</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+              <thead className="sticky top-0 bg-white z-10 border-b-0">
+                <tr className="text-left">
+                  <th className="py-2 pr-2 border-b">User</th>
+                  <th className="py-2 pr-2 border-b">Email</th>
+                  <th className="py-2 pr-2 border-b">Platforms</th>
+                  <th className="py-2 pr-2 border-b">Created</th>
+                  <th className="py-2 border-b">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +116,6 @@ export default function UserTable() {
                             <div className="text-white">{iconMap[p.platform] || '?'}</div>
                           </div>
                         ))}
-
                       </div>
                     </td>
                     <td className="py-2">
@@ -178,7 +160,6 @@ export default function UserTable() {
         </CardContent>
       </Card>
 
-      {/* Modal for Editing */}
       {editOpen && (
         <UserModal
           mode="edit"
