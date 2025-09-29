@@ -66,7 +66,7 @@ export default function UserTable() {
   if (isError) return <div className="px-6 py-4 text-red-500">Failed to load users.</div>;
 
   return (
-    <div className="space-y-4 px-100">
+    <div className="space-y-4 px-4 sm:px-6 lg:px-8 xl:px-20 2xl:px-60">
       <Input placeholder="Search users by username or email..." className="p-5 bg-white" />
       <div className="text-sm mb-4 rounded-xl border shadow-sm bg-white py-5 text-muted-foreground flex items-center gap-2 pl-3">
         <Users className="w-4 h-4" />
@@ -75,15 +75,15 @@ export default function UserTable() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="max-h-[500px] overflow-y-auto scroll-hidden">
+          <div className="max-h-[400px] overflow-y-auto scroll-hidden">
             <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left border-b">
-                  <th className="py-2">User</th>
-                  <th>Email</th>
-                  <th>Platforms</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+              <thead className="sticky top-0 bg-white z-10 border-b-0">
+                <tr className="text-left">
+                  <th className="py-2 pr-2 border-b">User</th>
+                  <th className="py-2 pr-2 border-b">Email</th>
+                  <th className="py-2 pr-2 border-b">Platforms</th>
+                  <th className="py-2 pr-2 border-b">Created</th>
+                  <th className="py-2 border-b">Actions</th>
                 </tr>
               </thead>
               <tbody>
